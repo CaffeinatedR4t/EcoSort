@@ -25,10 +25,10 @@ export const identifyBarcode = async (barcode: string): Promise<BarcodeIdentific
       let wasteType: 'plastic' | 'paper' | 'metal' | 'organic' | 'other' = 'other';
 
       // Mapping logic with Indonesian support
-      const isPlastic = /plastic|plastik|bottle|botol|pet|hdpe|pvc|ldpe|pp|ps/.test(packaging + categories);
-      const isPaper = /paper|kertas|cardboard|karton|box|dus|tetrapak/.test(packaging + categories);
-      const isMetal = /metal|logam|can|kaleng|tin|alum|besi/.test(packaging + categories);
-      const isOrganic = /fruit|buah|veg|sayur|organic|organik|food|makanan/.test(packaging + categories);
+      const isPlastic = /plastic|plastik|bottle|botol|pet|hdpe|pvc|ldpe|pp|ps|kresek|gelas plasti|bungkus|kemasan plasti/.test(packaging + categories);
+      const isPaper = /paper|kertas|cardboard|karton|box|dus|tetrapak|buku|majalah|koran|koran bekas/.test(packaging + categories);
+      const isMetal = /metal|logam|can|kaleng|tin|alum|besi|soda|minuman kaleng/.test(packaging + categories);
+      const isOrganic = /fruit|buah|veg|sayur|organic|organik|food|makanan|sisa|ampas|kulit buah/.test(packaging + categories);
 
       if (isPlastic) {
         wasteType = 'plastic';
