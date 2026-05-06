@@ -23,17 +23,21 @@ interface PickupState {
   fetchAssignedRequests: (collectorId: string) => Promise<void>;
   acceptRequest: (requestId: string, collectorId: string) => Promise<void>;
   markArrived: (requestId: string) => Promise<void>;
-  submitCollection: (requestId: string, userId: string, classification: any, weight: number) => Promise<void>;
+  submitCollection: (requestId: string, userId: string, collectorId: string, classification: any, weight: number) => Promise<void>;
   completePickup: (requestId: string) => Promise<void>;
   addToCart: (item: CartItem) => void;
   removeFromCart: (itemId: string) => void;
   clearCart: () => void;
+  reorderRequests: (newRequests: any[]) => void;
 }
 
 export const usePickupStore = create<PickupState>((set, get) => ({
   requests: [],
   loading: false,
   cart: [],
+  reorderRequests: (newRequests) => {
+    set({ requests: newRequests });
+  },
   createRequest: async (userId, location) => {
     set({ loading: true });
     
@@ -132,7 +136,7 @@ export const usePickupStore = create<PickupState>((set, get) => ({
     if (error) throw error;
     set({ loading: false });
   },
-  submitCollection: async (requestId, userId, classification, weight) => {
+  submitCollection: async (requestId, userId, collectorId, classification, weight) => {
     set({ loading: true });
     try {
       // 1. Update status to COMPLETED
@@ -154,7 +158,7 @@ export const usePickupStore = create<PickupState>((set, get) => ({
         }]);
       if (classError) throw classError;
 
-      // 3. Calculate Reward (Flat Rate per Bag)
+      // 3. Calculate Reward (Multiplier by Weight)
       const priceMap: Record<string, number> = {
         'plastic': 7000,
         'paper': 4000,
@@ -162,18 +166,33 @@ export const usePickupStore = create<PickupState>((set, get) => ({
         'organic': 3000,
         'other': 2000
       };
-      const amount = priceMap[classification.waste_type] || 2000;
+      
+      const baseAmount = priceMap[classification.waste_type] || 2000;
+      const userAmount = Math.round(baseAmount * weight);
+      const driverAmount = Math.round(5000 * weight); // Driver gets 5000/kg commission
 
-      // 4. Create Pending Transaction
-      const { error: txError } = await (supabase
-        .from('transactions') as any)
-        .insert([{
+      // 4. Create Pending Transactions for User AND Driver
+      const transactions = [
+        {
           user_id: userId,
           type: 'CREDIT',
-          amount: amount,
+          amount: userAmount,
           status: 'PENDING',
           ref_id: requestId
-        }]);
+        },
+        {
+          user_id: collectorId,
+          type: 'CREDIT',
+          amount: driverAmount,
+          status: 'PENDING',
+          ref_id: requestId
+        }
+      ];
+
+      const { error: txError } = await (supabase
+        .from('transactions') as any)
+        .insert(transactions);
+      
       if (txError) throw txError;
 
     } finally {

@@ -18,6 +18,7 @@ import { colors } from '../../services/theme/colors';
 import { spacing } from '../../services/theme/spacing';
 import { Button } from '../../components/Button';
 import { Card } from '../../components/Card';
+import { useAuthStore } from '../../store/authStore';
 import { usePickupStore } from '../../store/pickupStore';
 import { classifyWaste, GeminiClassification } from '../../services/api/gemini';
 import { 
@@ -37,6 +38,7 @@ export const CollectorJobDetailScreen = () => {
   const route = useRoute<any>();
   const navigation = useNavigation<any>();
   const { job } = route.params;
+  const { user } = useAuthStore();
   const { markArrived, submitCollection, loading } = usePickupStore();
   
   const [status, setStatus] = useState(job.status);

@@ -35,7 +35,7 @@ import {
 } from 'lucide-react-native';
 
 export const UserHomeScreen = () => {
-  const { user, transactions, fetchTransactions } = useAuthStore();
+  const { user, transactions, fetchTransactions, fetchProfile } = useAuthStore();
   const { requests, fetchUserRequests } = usePickupStore();
   const [refreshing, setRefreshing] = useState(false);
   const navigation = useNavigation<any>();
@@ -47,15 +47,17 @@ export const UserHomeScreen = () => {
     if (user) {
       fetchUserRequests(user.id);
       fetchTransactions();
+      fetchProfile();
     }
-  }, [user]);
+  }, [user?.id]);
 
   const onRefresh = async () => {
     setRefreshing(true);
     if (user) {
       await Promise.all([
         fetchUserRequests(user.id),
-        fetchTransactions()
+        fetchTransactions(),
+        fetchProfile()
       ]);
     }
     setRefreshing(false);
@@ -193,55 +195,71 @@ export const UserHomeScreen = () => {
           <View style={styles.section}>
             <Text style={[styles.sectionTitle, { color: '#121c28' }]}>Your Journey</Text>
             
-            <Card style={styles.journeyCard}>
-              <View style={styles.journeyMain}>
-                <View style={[styles.journeyIconBox, { backgroundColor: '#e3f2fd' }]}>
-                  <Coffee color="#2196f3" size={24} />
+            <TouchableOpacity 
+              activeOpacity={0.7}
+              onPress={() => {
+                if (balance >= 50000) {
+                  Alert.alert('Congratulations! 🎉', 'You have earned a Free Coffee voucher! Use code: ECOSORT-COFFEE-2026');
+                } else {
+                  Alert.alert('Keep Going!', `You need Rp ${(50000 - balance).toLocaleString()} more for a free coffee.`);
+                }
+              }}
+            >
+              <Card style={styles.journeyCard}>
+                <View style={styles.journeyMain}>
+                  <View style={[styles.journeyIconBox, { backgroundColor: '#e3f2fd' }]}>
+                    <Coffee color="#2196f3" size={24} />
+                  </View>
+                  <View style={styles.journeyInfo}>
+                    <Text style={styles.journeyTitle}>Free Coffee</Text>
+                    <Text style={styles.journeySubtitle}>Starbucks Voucher</Text>
+                  </View>
+                  <Text style={[styles.journeyTarget, { color: '#006948' }]}>50k</Text>
                 </View>
-                <View style={styles.journeyInfo}>
-                  <Text style={styles.journeyTitle}>Free Coffee</Text>
-                  <Text style={styles.journeySubtitle}>Starbucks Voucher</Text>
+                
+                <View style={styles.progressSection}>
+                  <View style={styles.progressLabels}>
+                    <Text style={styles.progressLabel}>Progress</Text>
+                    <Text style={styles.progressValue}>{balance >= 1000 ? `${(balance / 1000).toFixed(0)}k` : balance} / 50k</Text>
+                  </View>
+                  <View style={styles.progressBarBg}>
+                    <View style={[styles.progressBarFill, { backgroundColor: '#006948', width: `${progressPercent}%` }]} />
+                  </View>
                 </View>
-                <Text style={[styles.journeyTarget, { color: '#006948' }]}>50k</Text>
-              </View>
-              
-              <View style={styles.progressSection}>
-                <View style={styles.progressLabels}>
-                  <Text style={styles.progressLabel}>Progress</Text>
-                  <Text style={styles.progressValue}>{balance >= 1000 ? `${(balance / 1000).toFixed(0)}k` : balance} / 50k</Text>
-                </View>
-                <View style={styles.progressBarBg}>
-                  <View style={[styles.progressBarFill, { backgroundColor: '#006948', width: `${progressPercent}%` }]} />
-                </View>
-              </View>
-            </Card>
+              </Card>
+            </TouchableOpacity>
           </View>
 
           {/* Daily Task Section */}
-          <Card style={styles.taskCard}>
-            <View style={styles.taskHeader}>
-              <View style={[styles.badge, { backgroundColor: '#fff3e0' }]}>
-                <Text style={styles.badgeText}>Daily</Text>
+          <TouchableOpacity 
+            activeOpacity={0.7}
+            onPress={() => navigation.navigate('Scan')}
+          >
+            <Card style={styles.taskCard}>
+              <View style={styles.taskHeader}>
+                <View style={[styles.badge, { backgroundColor: '#fff3e0' }]}>
+                  <Text style={styles.badgeText}>Daily</Text>
+                </View>
+                <Recycle color="#9e9e9e" size={20} />
               </View>
-              <Recycle color="#9e9e9e" size={20} />
-            </View>
-            
-            <Text style={styles.taskTitle}>Recycle 3 Plastics</Text>
-            <Text style={styles.taskDesc}>Drop off 3 plastic bottles at any smart bin to complete.</Text>
-            
-            <View style={styles.taskFooter}>
-              <View style={styles.taskProgressIcons}>
-                {[1, 2, 3].map((num) => (
-                  plasticsCount >= num ? (
-                    <CheckCircle2 key={num} color="#006948" size={24} />
-                  ) : (
-                    <Droplets key={num} color="#cfd8dc" size={24} />
-                  )
-                ))}
+              
+              <Text style={styles.taskTitle}>Recycle 3 Plastics</Text>
+              <Text style={styles.taskDesc}>Drop off 3 plastic bottles at any smart bin to complete.</Text>
+              
+              <View style={styles.taskFooter}>
+                <View style={styles.taskProgressIcons}>
+                  {[1, 2, 3].map((num) => (
+                    plasticsCount >= num ? (
+                      <CheckCircle2 key={num} color="#006948" size={24} />
+                    ) : (
+                      <Droplets key={num} color="#cfd8dc" size={24} />
+                    )
+                  ))}
+                </View>
+                <Text style={[styles.rewardText, { color: '#00668a' }]}>+Rp 500</Text>
               </View>
-              <Text style={[styles.rewardText, { color: '#00668a' }]}>+Rp 500</Text>
-            </View>
-          </Card>
+            </Card>
+          </TouchableOpacity>
 
           {/* Quick Guides Section */}
           <View style={styles.section}>

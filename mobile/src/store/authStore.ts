@@ -17,6 +17,7 @@ interface AuthState {
   setUser: (user: UserProfile | null) => void;
   setSession: (session: any | null) => void;
   initialize: () => Promise<void>;
+  fetchProfile: () => Promise<void>;
   fetchTransactions: () => Promise<void>;
   fetchWithdrawals: () => Promise<void>;
   requestWithdrawal: (data: {
@@ -49,7 +50,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         .from('users')
         .select('*')
         .eq('id', session.user.id)
-        .single();
+        .maybeSingle();
       
       if (profile) {
         set({ user: profile as UserProfile });
@@ -72,15 +73,17 @@ export const useAuthStore = create<AuthState>((set, get) => ({
             .from('users')
             .select('*')
             .eq('id', session.user.id)
-            .single();
+            .maybeSingle();
           
           if (error) {
-            console.warn('Profile fetch error (might be expected during sign-up):', error.message);
+            console.warn('Profile fetch error:', error.message);
             return;
           }
 
           if (profile) {
             set({ user: profile as UserProfile });
+          } else {
+            console.warn('No profile found for user ID:', session.user.id);
           }
         } catch (err) {
           console.error('Error in onAuthStateChange profile fetch:', err);
@@ -89,6 +92,20 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         set({ user: null });
       }
     });
+  },
+  fetchProfile: async () => {
+    const userId = get().session?.user?.id;
+    if (!userId) return;
+
+    const { data: profile, error } = await supabase
+      .from('users')
+      .select('*')
+      .eq('id', userId)
+      .maybeSingle();
+    
+    if (profile && !error) {
+      set({ user: profile as UserProfile });
+    }
   },
   fetchTransactions: async () => {
     const userId = get().session?.user?.id;
