@@ -1,0 +1,43 @@
+# Dependencies
+node_modules/
+
+# Documentation (Internal)
+DESIGN.md
+GEMINI.md
+PROGRESS.md
+SQL.md
+
+# Environment
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+mobile/.env
+mobile/.env.local
+
+# Expo
+.expo/
+dist/
+web-build/
+expo-env.d.ts
+
+# Debug
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+
+# macOS
+.DS_Store
+
+# Native
+ios/
+android/
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+
+# Typescript
+*.tsbuildinfo
