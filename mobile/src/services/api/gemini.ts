@@ -24,11 +24,12 @@ export const classifyWaste = async (base64Image: string): Promise<GeminiClassifi
   }
   try {
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${GEMINI_API_KEY}`,
+      'https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent',
       {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'X-goog-api-key': GEMINI_API_KEY,
         },
         body: JSON.stringify({
           contents: [
@@ -44,6 +45,9 @@ export const classifyWaste = async (base64Image: string): Promise<GeminiClassifi
               ],
             },
           ],
+          generationConfig: {
+            response_mime_type: "application/json",
+          }
         }),
       }
     );
@@ -61,9 +65,7 @@ export const classifyWaste = async (base64Image: string): Promise<GeminiClassifi
       throw new Error('Empty response from Gemini');
     }
 
-    // Clean JSON response (sometimes Gemini adds markdown block)
-    const cleanJson = textResponse.replace(/```json|```/g, '').trim();
-    return JSON.parse(cleanJson);
+    return JSON.parse(textResponse);
   } catch (error) {
     console.error('Gemini Service Error:', error);
     return {
