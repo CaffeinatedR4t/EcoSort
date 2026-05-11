@@ -12,6 +12,8 @@ import { PickLocationScreen } from '../screens/user/PickLocationScreen';
 import { ProfileScreen } from '../screens/user/ProfileScreen';
 import { RequestDetailScreen } from '../screens/user/RequestDetailScreen';
 import { WithdrawalScreen } from '../screens/user/WithdrawalScreen';
+import { NotificationScreen } from '../screens/user/NotificationScreen';
+import { PrivacyScreen } from '../screens/user/PrivacyScreen';
 import { CollectorHomeScreen } from '../screens/collector/CollectorHomeScreen';
 import { CollectorJobDetailScreen } from '../screens/collector/CollectorJobDetailScreen';
 import { AdminHomeScreen } from '../screens/admin/AdminHomeScreen';
@@ -30,6 +32,8 @@ const UserNavigator = () => (
     <UserStack.Screen name="Profile" component={ProfileScreen} />
     <UserStack.Screen name="RequestDetail" component={RequestDetailScreen} />
     <UserStack.Screen name="Withdrawal" component={WithdrawalScreen} />
+    <UserStack.Screen name="Notification" component={NotificationScreen} />
+    <UserStack.Screen name="Privacy" component={PrivacyScreen} />
   </UserStack.Navigator>
 );
 

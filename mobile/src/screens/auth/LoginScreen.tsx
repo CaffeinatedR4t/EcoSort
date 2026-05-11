@@ -62,14 +62,21 @@ export const LoginScreen = () => {
           
           console.log('Creating profile...');
           // 2. Direct insert for profile
-          const isCollector = email.toLowerCase().includes('collector') || email.toLowerCase().includes('driver');
+          const emailLower = email.toLowerCase();
+          const isAdmin = emailLower.includes('admin');
+          const isCollector = emailLower.includes('collector') || emailLower.includes('driver');
+          
+          let role = 'user';
+          if (isAdmin) role = 'admin';
+          else if (isCollector) role = 'collector';
+
           const { error: profileError } = await (supabase
             .from('users') as any)
             .insert([
               { 
                 id: data.user.id, 
                 name, 
-                role: (isCollector ? 'collector' : 'user') as any,
+                role: role as any,
                 balance: 0 
               }
             ]);

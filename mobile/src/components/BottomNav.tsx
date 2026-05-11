@@ -87,21 +87,20 @@ const styles = StyleSheet.create({
     // No extra styles for the container itself
   },
   activeCircle: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     justifyContent: 'center',
     alignItems: 'center',
-    marginTop: -30, // Float effect
     ...Platform.select({
       ios: {
         shadowColor: '#006948',
-        shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 0.4,
-        shadowRadius: 10,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.2,
+        shadowRadius: 6,
       },
       android: {
-        elevation: 10,
+        elevation: 4,
       },
     }),
   },

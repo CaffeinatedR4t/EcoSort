@@ -13,6 +13,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAdminStore } from '../../store/adminStore';
 import { useAuthStore } from '../../store/authStore';
+import { useNavigation } from '@react-navigation/native';
 import { spacing } from '../../services/theme/spacing';
 import { Card } from '../../components/Card';
 import { Logo } from '../../components/Logo';
@@ -27,6 +28,7 @@ import {
 } from 'lucide-react-native';
 
 export const AdminHomeScreen = () => {
+  const navigation = useNavigation<any>();
   const { 
     pendingRewards, 
     pendingWithdrawals, 
@@ -46,6 +48,29 @@ export const AdminHomeScreen = () => {
   useEffect(() => {
     loadData();
   }, []);
+
+  const handleLogout = async () => {
+    Alert.alert('Logout', 'Are you sure you want to sign out?', [
+      { text: 'Cancel', style: 'cancel' },
+      { 
+        text: 'Logout', 
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await logout();
+            // Force reset navigation to ensure we go to auth stack
+            navigation.reset({
+              index: 0,
+              routes: [{ name: 'Login' }],
+            });
+          } catch (err) {
+            console.error('Logout error:', err);
+            Alert.alert('Error', 'Failed to log out. Please try again.');
+          }
+        }
+      }
+    ]);
+  };
 
   const loadData = async () => {
     await Promise.all([
@@ -113,7 +138,7 @@ export const AdminHomeScreen = () => {
             <Logo size={32} />
             <Text style={styles.logoText}>Admin Panel</Text>
           </View>
-          <TouchableOpacity onPress={logout} style={styles.logoutBtn}>
+          <TouchableOpacity onPress={handleLogout} style={styles.logoutBtn}>
             <LogOut color="#e11d48" size={20} />
           </TouchableOpacity>
         </View>

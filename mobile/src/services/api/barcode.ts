@@ -5,14 +5,25 @@ export interface BarcodeIdentification {
 
 export const identifyBarcode = async (barcode: string): Promise<BarcodeIdentification> => {
   try {
-    const response = await fetch(`https://world.openfoodfacts.org/api/v2/product/${barcode}.json`, {
+    // 1. Sanitize the barcode (remove any non-numeric characters like prefixes/suffixes)
+    const sanitizedBarcode = barcode.replace(/[^0-9]/g, '');
+    console.log(`[Barcode Service] Raw barcode: "${barcode}", Sanitized: "${sanitizedBarcode}"`);
+
+    if (!sanitizedBarcode) {
+      console.warn('[Barcode Service] Barcode is empty after sanitization.');
+      return { productName: 'Unknown', wasteType: 'other' };
+    }
+
+    const response = await fetch(`https://world.openfoodfacts.org/api/v2/product/${sanitizedBarcode}.json`, {
       headers: {
         'User-Agent': 'EcoSort - MobileApp - Version 1.0',
       },
     });
 
     if (!response.ok) {
-      throw new Error('Barcode lookup failed');
+      // 2. Handle non-200 responses (like 404 Not Found) gracefully
+      console.warn(`[Barcode Service] API returned ${response.status} for barcode ${sanitizedBarcode}`);
+      return { productName: 'Unknown', wasteType: 'other' };
     }
 
     const data = await response.json();
@@ -40,12 +51,14 @@ export const identifyBarcode = async (barcode: string): Promise<BarcodeIdentific
         wasteType = 'organic';
       }
 
+      console.log(`[Barcode Service] Success: ${productName} classified as ${wasteType}`);
       return { productName, wasteType };
     }
 
+    console.warn(`[Barcode Service] Product not found for barcode ${sanitizedBarcode}`);
     return { productName: 'Unknown', wasteType: 'other' };
   } catch (error) {
-    console.error('Barcode service error:', error);
+    console.error('[Barcode Service] error:', error);
     return { productName: 'Unknown', wasteType: 'other' };
   }
 };

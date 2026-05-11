@@ -8,7 +8,8 @@ import {
   TouchableOpacity, 
   Platform, 
   useWindowDimensions,
-  StatusBar
+  StatusBar,
+  Alert
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -31,7 +32,9 @@ import {
   Droplets, 
   Rocket, 
   MapPin, 
-  ShieldCheck
+  ShieldCheck,
+  Truck,
+  ChevronRight
 } from 'lucide-react-native';
 
 export const UserHomeScreen = () => {
@@ -85,10 +88,20 @@ export const UserHomeScreen = () => {
     new Date(req.created_at).toDateString() === today && 
     req.waste_hint?.toLowerCase().includes('plastic')
   ).length;
-  const plasticsCount = Math.min(completedPlasticsToday, 3);
+  
+  // Count how many plastics were collected in COMPLETED requests overall for the "3 Plastics" task
+  const completedPlasticsTotal = requests.filter(req => 
+    req.status === 'COMPLETED' && 
+    req.waste_hint?.toLowerCase().includes('plastic')
+  ).length;
+  const plasticsCount = Math.min(completedPlasticsTotal, 3);
 
-  // Stagnant trend for now (will connect to transactions later)
-  const weeklyTrend = 0; 
+  // Dynamic Trend: Sum of CREDIT transactions in the last 7 days
+  const oneWeekAgo = new Date();
+  oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+  const weeklyTrend = transactions
+    .filter(tx => tx.type === 'CREDIT' && tx.status === 'COMPLETED' && new Date(tx.created_at) >= oneWeekAgo)
+    .reduce((acc, tx) => acc + tx.amount, 0); 
 
   const renderTrend = () => {
     if (weeklyTrend > 0) {
@@ -151,7 +164,10 @@ export const UserHomeScreen = () => {
               </View>
               <Text style={[styles.logoText, { color: '#006948' }]}>EcoSort</Text>
             </View>
-            <TouchableOpacity style={[styles.iconButton, { backgroundColor: '#fff' }]}>
+            <TouchableOpacity 
+              style={[styles.iconButton, { backgroundColor: '#fff' }]}
+              onPress={() => navigation.navigate('Notification')}
+            >
               <Bell color="#006948" size={22} />
             </TouchableOpacity>
           </View>
@@ -162,6 +178,37 @@ export const UserHomeScreen = () => {
               {getGreeting()}{'\n'}{user?.name || 'Alex'}
             </Text>
           </View>
+
+          {/* Active Pickups Section */}
+          {requests.filter(req => ['PENDING', 'ASSIGNED', 'IN_PROGRESS'].includes(req.status)).length > 0 && (
+            <View style={styles.section}>
+              <Text style={[styles.sectionTitle, { color: '#121c28' }]}>Active Pickups</Text>
+              {requests.filter(req => ['PENDING', 'ASSIGNED', 'IN_PROGRESS'].includes(req.status)).map(req => (
+                <TouchableOpacity 
+                  key={req.id}
+                  activeOpacity={0.7}
+                  onPress={() => navigation.navigate('RequestDetail', { request: req })}
+                  style={{ marginBottom: spacing.md }}
+                >
+                  <Card style={styles.activePickupCard}>
+                    <View style={styles.activePickupMain}>
+                      <View style={styles.activePickupIcon}>
+                        <Truck color="#006948" size={24} />
+                      </View>
+                      <View style={styles.activePickupInfo}>
+                        <Text style={styles.activePickupTitle}>Pickup #{req.id.substring(0,6).toUpperCase()}</Text>
+                        <Text style={styles.activePickupStatus}>{req.status.replace('_', ' ')}</Text>
+                      </View>
+                    </View>
+                    <View style={styles.activePickupArrow}>
+                      <Text style={styles.activePickupHint}>TRACK</Text>
+                      <ChevronRight color="#006948" size={16} />
+                    </View>
+                  </Card>
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
 
           {/* Wallet Card */}
           <View style={[styles.walletCard, { backgroundColor: '#006948' }]}>
@@ -289,13 +336,16 @@ export const UserHomeScreen = () => {
                 <Text style={styles.guideSubtitle}>Register home bins.</Text>
               </View>
 
-              <View style={styles.guideCard}>
+              <TouchableOpacity 
+                style={styles.guideCard}
+                onPress={() => navigation.navigate('Privacy')}
+              >
                 <View style={[styles.guideIconBox, { backgroundColor: '#f1f8e9' }]}>
                   <ShieldCheck color="#8bc34a" size={24} />
                 </View>
                 <Text style={styles.guideTitle}>Privacy</Text>
                 <Text style={styles.guideSubtitle}>Your data is safe.</Text>
-              </View>
+              </TouchableOpacity>
             </ScrollView>
           </View>
         </ScrollView>
@@ -467,6 +517,54 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: '700',
     marginBottom: spacing.md,
+  },
+  activePickupCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: spacing.md,
+    borderRadius: 20,
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#e0f2f1',
+  },
+  activePickupMain: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+  },
+  activePickupIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#f1f8e9',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  activePickupInfo: {
+    gap: 2,
+  },
+  activePickupTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#121c28',
+  },
+  activePickupStatus: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#006948',
+    textTransform: 'uppercase',
+  },
+  activePickupArrow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  activePickupHint: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#006948',
+    letterSpacing: 1,
   },
   pendingCard: {
     width: 200,

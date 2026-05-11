@@ -23,7 +23,13 @@ interface PickupState {
   fetchAssignedRequests: (collectorId: string) => Promise<void>;
   acceptRequest: (requestId: string, collectorId: string) => Promise<void>;
   markArrived: (requestId: string) => Promise<void>;
-  submitCollection: (requestId: string, userId: string, collectorId: string, classification: any, weight: number) => Promise<void>;
+  submitCollection: (params: {
+    requestId: string;
+    userId: string;
+    collectorId: string;
+    classification: any;
+    weight: number;
+  }) => Promise<void>;
   completePickup: (requestId: string) => Promise<void>;
   addToCart: (item: CartItem) => void;
   removeFromCart: (itemId: string) => void;
@@ -136,7 +142,7 @@ export const usePickupStore = create<PickupState>((set, get) => ({
     if (error) throw error;
     set({ loading: false });
   },
-  submitCollection: async (requestId, userId, collectorId, classification, weight) => {
+  submitCollection: async ({ requestId, userId, collectorId, classification, weight }) => {
     set({ loading: true });
     try {
       // 1. Update status to COMPLETED

@@ -10,7 +10,8 @@ import {
   StatusBar,
   Platform,
   useWindowDimensions,
-  ScrollView
+  ScrollView,
+  ActivityIndicator
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -20,6 +21,8 @@ import { Card } from '../../components/Card';
 import { Button } from '../../components/Button';
 import { useAuthStore } from '../../store/authStore';
 import { usePickupStore } from '../../store/pickupStore';
+import { supabase } from '../../services/api/supabase';
+import { optimizeRoute } from '../../services/api/routing';
 import * as Location from 'expo-location';
 import { 
   LogOut, 
@@ -39,6 +42,7 @@ export const CollectorHomeScreen = () => {
   const [tab, setTab] = useState<'available' | 'active' | 'history'>('available');
   const [refreshing, setRefreshing] = useState(false);
   const [history, setHistory] = useState<any[]>([]);
+  const [stats, setStats] = useState({ count: 0, weight: 0 });
   const [isOptimizing, setIsOptimizing] = useState(false);
 
   const navigation = useNavigation<any>();
@@ -47,6 +51,7 @@ export const CollectorHomeScreen = () => {
 
   useEffect(() => {
     loadData();
+    fetchStats();
   }, [tab]);
 
   const loadData = async () => {
@@ -57,6 +62,24 @@ export const CollectorHomeScreen = () => {
       await fetchAssignedRequests(user.id);
     } else {
       await fetchHistory();
+    }
+  };
+
+  const fetchStats = async () => {
+    if (!user) return;
+    try {
+      const { data: classifications, error } = await supabase
+        .from('waste_classifications')
+        .select('collector_weight_kg, pickup_requests!inner(collector_id, status)')
+        .eq('pickup_requests.collector_id', user.id)
+        .eq('pickup_requests.status', 'COMPLETED');
+      
+      if (classifications && !error) {
+        const totalWeight = classifications.reduce((sum, item) => sum + (item.collector_weight_kg || 0), 0);
+        setStats({ count: classifications.length, weight: totalWeight });
+      }
+    } catch (err) {
+      console.error('Stats fetch error:', err);
     }
   };
 
@@ -78,20 +101,6 @@ export const CollectorHomeScreen = () => {
     setRefreshing(false);
   };
 
-  const haversineDistance = (coords1: { lat: number, lng: number }, coords2: { lat: number, lng: number }) => {
-    const toRad = (x: number) => (x * Math.PI) / 180;
-    const R = 6371; // km
-    const dLat = toRad(coords2.lat - coords1.lat);
-    const dLon = toRad(coords2.lng - coords1.lng);
-    const lat1 = toRad(coords1.lat);
-    const lat2 = toRad(coords2.lat);
-
-    const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-              Math.sin(dLon / 2) * Math.sin(dLon / 2) * Math.cos(lat1) * Math.cos(lat2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    return R * c;
-  };
-
   const handleOptimizeRoute = async () => {
     if (requests.length <= 1) {
       Alert.alert('Info', 'Not enough active jobs to optimize.');
@@ -108,36 +117,25 @@ export const CollectorHomeScreen = () => {
       }
 
       const currentPos = await Location.getCurrentPositionAsync({});
-      let currentPoint = { 
-        lat: currentPos.coords.latitude, 
-        lng: currentPos.coords.longitude 
+      const startPoint = { 
+        latitude: currentPos.coords.latitude, 
+        longitude: currentPos.coords.longitude 
       };
 
-      // 2. TSP Nearest Neighbor Algorithm
-      let unvisited = [...requests];
-      const optimized: any[] = [];
+      // 2. Call OSRM TSP Trip API
+      const waypoints = requests.map(r => ({
+        latitude: r.location.lat,
+        longitude: r.location.lng
+      }));
 
-      while (unvisited.length > 0) {
-        let nearestIdx = 0;
-        let minDistance = Infinity;
+      const optimizedIndices = await optimizeRoute(startPoint, waypoints);
 
-        for (let i = 0; i < unvisited.length; i++) {
-          const dist = haversineDistance(currentPoint, unvisited[i].location);
-          if (dist < minDistance) {
-            minDistance = dist;
-            nearestIdx = i;
-          }
-        }
+      // 3. Map optimized order back to requests
+      const optimizedRequests = optimizedIndices.map(index => requests[index]);
 
-        optimized.push(unvisited[nearestIdx]);
-        // Update current point to the job just added
-        currentPoint = unvisited[nearestIdx].location;
-        unvisited.splice(nearestIdx, 1);
-      }
-
-      // 3. Update store
-      reorderRequests(optimized);
-      Alert.alert('Optimized!', 'Your route has been reordered based on your current location.');
+      // 4. Update store
+      reorderRequests(optimizedRequests);
+      Alert.alert('Optimized!', 'Your route has been reordered based on real road driving distances.');
     } catch (error) {
       console.error('Optimization error:', error);
       Alert.alert('Error', 'Failed to optimize route.');
@@ -242,11 +240,11 @@ export const CollectorHomeScreen = () => {
             <View style={styles.miniStatsRow}>
               <View style={styles.miniStat}>
                 <CheckCircle color={colors.primary} size={16} />
-                <Text style={styles.miniStatText}>24 Collected</Text>
+                <Text style={styles.miniStatText}>{stats.count} Collected</Text>
               </View>
               <View style={styles.miniStat}>
                 <Truck color={colors.primary} size={16} />
-                <Text style={styles.miniStatText}>89.4 kg Total</Text>
+                <Text style={styles.miniStatText}>{stats.weight.toFixed(1)} kg Total</Text>
               </View>
             </View>
           </Card>
@@ -326,10 +324,15 @@ export const CollectorHomeScreen = () => {
           <View style={[styles.floatingFooter, { paddingBottom: insets.bottom + spacing.md }]}>
             <TouchableOpacity 
               style={styles.optimizeBtn}
-              onPress={() => Alert.alert('Coming Soon', 'Route optimization will be available in the next update.')}
+              onPress={handleOptimizeRoute}
+              disabled={isOptimizing}
             >
-              <Navigation color={colors.white} size={20} />
-              <Text style={styles.optimizeText}>Optimize Route</Text>
+              {isOptimizing ? (
+                <ActivityIndicator color={colors.white} />
+              ) : (
+                <Navigation color={colors.white} size={20} />
+              )}
+              <Text style={styles.optimizeText}>{isOptimizing ? 'Optimizing...' : 'Optimize Route'}</Text>
             </TouchableOpacity>
           </View>
         )}

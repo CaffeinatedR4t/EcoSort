@@ -3,6 +3,8 @@ import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Platform, useWind
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import MapView, { Marker, Polyline } from 'react-native-maps';
+import { supabase } from '../../services/api/supabase';
+import { fetchRoute } from '../../services/api/routing';
 import { 
   ChevronLeft, 
   MapPin, 
@@ -26,33 +28,74 @@ export const RequestDetailScreen = () => {
   const { request } = route.params;
   const { width } = useWindowDimensions();
 
-  const [driverPos, setDriverPos] = useState({
-    latitude: request.location.lat + 0.005,
-    longitude: request.location.lng + 0.005,
-  });
+  const [driverPos, setDriverPos] = useState<any>(null);
+  const [routeCoords, setRouteCoords] = useState<any[]>([]);
+  const [collectorProfile, setCollectorProfile] = useState<any>(null);
 
-  // Simulated live tracking
+  // Fetch collector profile
   useEffect(() => {
-    if (request.status === 'ASSIGNED' || request.status === 'IN_PROGRESS') {
-      const interval = setInterval(() => {
-        setDriverPos(prev => {
-          const latDiff = (request.location.lat - prev.latitude) * 0.1;
-          const lngDiff = (request.location.lng - prev.longitude) * 0.1;
-          
-          if (Math.abs(latDiff) < 0.00001 && Math.abs(lngDiff) < 0.00001) {
-            clearInterval(interval);
-            return prev;
-          }
+    if (request.collector_id) {
+      const fetchCollector = async () => {
+        const { data } = await supabase
+          .from('users')
+          .select('name, current_lat, current_lng')
+          .eq('id', request.collector_id)
+          .single();
+        if (data) {
+          setCollectorProfile(data);
+          if (data.current_lat && data.current_lng) {
+            const initialPos = {
+              latitude: data.current_lat,
+              longitude: data.current_lng,
+            };
+            setDriverPos(initialPos);
 
-          return {
-            latitude: prev.latitude + latDiff,
-            longitude: prev.longitude + lngDiff,
-          };
-        });
-      }, 2000);
-      return () => clearInterval(interval);
+            // Fetch initial road route
+            const initialRoute = await fetchRoute(initialPos, {
+              latitude: request.location.lat,
+              longitude: request.location.lng,
+            });
+            setRouteCoords(initialRoute);
+          }
+        }
+      };
+      fetchCollector();
     }
-  }, [request.status]);
+  }, [request.collector_id]);
+
+  // Real-time tracking from Supabase
+  useEffect(() => {
+    let channel: any;
+
+    if (request.status === 'ASSIGNED' || request.status === 'IN_PROGRESS') {
+      channel = supabase.channel(`job-tracking-${request.id}`);
+      
+      channel
+        .on('broadcast', { event: 'location-update' }, async (response: any) => {
+          if (response.payload && typeof response.payload.latitude === 'number' && typeof response.payload.longitude === 'number') {
+            const newPos = {
+              latitude: response.payload.latitude,
+              longitude: response.payload.longitude,
+            };
+            setDriverPos(newPos);
+
+            // Update road route
+            const newRoute = await fetchRoute(newPos, {
+              latitude: request.location.lat,
+              longitude: request.location.lng,
+            });
+            setRouteCoords(newRoute);
+          }
+        })
+        .subscribe();
+    }
+
+    return () => {
+      if (channel) {
+        supabase.removeChannel(channel);
+      }
+    };
+  }, [request.id, request.status, request.location]);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -101,7 +144,7 @@ export const RequestDetailScreen = () => {
               title="Your Location"
               pinColor={colors.primary}
             />
-            {(request.status === 'ASSIGNED' || request.status === 'IN_PROGRESS') && (
+            {driverPos && (request.status === 'ASSIGNED' || request.status === 'IN_PROGRESS') && (
               <>
                 <Marker
                   coordinate={driverPos}
@@ -112,10 +155,7 @@ export const RequestDetailScreen = () => {
                   </View>
                 </Marker>
                 <Polyline
-                  coordinates={[
-                    driverPos,
-                    { latitude: request.location.lat, longitude: request.location.lng }
-                  ]}
+                  coordinates={routeCoords.length > 0 ? routeCoords : [driverPos, { latitude: request.location.lat, longitude: request.location.lng }]}
                   strokeColor={colors.primary}
                   strokeWidth={3}
                   lineDashPattern={[5, 5]}
@@ -143,7 +183,9 @@ export const RequestDetailScreen = () => {
                 <User color={colors.primary} size={24} />
               </View>
               <View style={styles.driverText}>
-                <Text style={styles.driverName}>EcoSort Partner</Text>
+                <Text style={styles.driverName}>
+                  {collectorProfile?.name || 'EcoSort Partner'}
+                </Text>
                 <Text style={styles.driverRating}>⭐ 4.9 • Official Collector</Text>
               </View>
               <View style={styles.driverActions}>
@@ -404,4 +446,3 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
 });
-
