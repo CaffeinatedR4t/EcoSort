@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { supabase } from '../services/api/supabase';
 import { Database } from '../types/database.types';
+import { useNotificationStore } from './notificationStore';
 
 type PickupRequest = Database['public']['Tables']['pickup_requests']['Row'];
 
@@ -121,6 +122,16 @@ export const usePickupStore = create<PickupState>((set, get) => ({
   },
   acceptRequest: async (requestId, collectorId) => {
     set({ loading: true });
+    
+    // 1. Get request info to know the user_id
+    const { data: request, error: fetchError } = await (supabase
+      .from('pickup_requests') as any)
+      .select('user_id')
+      .eq('id', requestId)
+      .single();
+    
+    if (fetchError) throw fetchError;
+
     const { error } = await (supabase
       .from('pickup_requests') as any)
       .update({ 
@@ -130,6 +141,15 @@ export const usePickupStore = create<PickupState>((set, get) => ({
       .eq('id', requestId);
     
     if (error) throw error;
+
+    // 2. Create Notification for User
+    await useNotificationStore.getState().createNotification({
+      userId: (request as any).user_id,
+      title: 'Collector Assigned 🚛',
+      message: 'A collector has accepted your request and is on their way.',
+      type: 'pickup'
+    });
+
     set({ loading: false });
   },
   markArrived: async (requestId) => {
@@ -200,6 +220,22 @@ export const usePickupStore = create<PickupState>((set, get) => ({
         .insert(transactions);
       
       if (txError) throw txError;
+
+      // 5. Create Notifications for User AND Driver
+      await Promise.all([
+        useNotificationStore.getState().createNotification({
+          userId: userId,
+          title: 'Collection Completed! ✅',
+          message: `Your pickup is finished. A reward of Rp ${userAmount.toLocaleString()} is pending approval.`,
+          type: 'pickup'
+        }),
+        useNotificationStore.getState().createNotification({
+          userId: collectorId,
+          title: 'Commission Earned! 💰',
+          message: `You earned Rp ${driverAmount.toLocaleString()} for this collection. Pending admin approval.`,
+          type: 'reward'
+        })
+      ]);
 
     } finally {
       set({ loading: false });

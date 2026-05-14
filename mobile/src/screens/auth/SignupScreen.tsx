@@ -9,8 +9,8 @@ import {
   Platform, 
   ScrollView, 
   useWindowDimensions,
-  Animated,
-  TouchableOpacity
+  TouchableOpacity,
+  Animated
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -30,13 +30,15 @@ const layout = {
   }
 };
 
-export const LoginScreen = () => {
+export const SignupScreen = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [name, setName] = useState('');
   const [loading, setLoading] = useState(false);
-  const { width } = useWindowDimensions();
+  const [toastMessage, setToastMessage] = useState('');
+  const { width, height } = useWindowDimensions();
   const navigation = useNavigation<any>();
-  
+
   const fadeAnim = useState(new Animated.Value(0))[0];
   const slideAnim = useState(new Animated.Value(20))[0];
 
@@ -55,23 +57,64 @@ export const LoginScreen = () => {
     ]).start();
   }, []);
 
-  const handleSignIn = async () => {
-    if (!email || !password) {
+  const showToast = (message: string) => {
+    setToastMessage(message);
+    setTimeout(() => {
+      setToastMessage('');
+    }, 3000);
+  };
+
+  const handleSignup = async () => {
+    if (!email || !password || !name) {
       Alert.alert('Error', 'Please fill in all fields');
       return;
     }
 
     setLoading(true);
     try {
-      console.log('Attempting sign in for:', email);
-      const { error } = await supabase.auth.signInWithPassword({
+      console.log('Attempting sign up for:', email);
+      const { data, error } = await supabase.auth.signUp({
         email,
         password,
       });
 
       if (error) {
-        console.error('Sign in error:', error);
+        console.error('Sign up error:', error);
         throw error;
+      }
+
+      if (data.user) {
+        console.log('User created in auth.users, signing out to prevent auto-login jump...');
+        await supabase.auth.signOut();
+        
+        console.log('Creating profile...');
+        const emailLower = email.toLowerCase();
+        const isAdmin = emailLower.includes('admin');
+        const isCollector = emailLower.includes('collector') || emailLower.includes('driver');
+        
+        let role = 'user';
+        if (isAdmin) role = 'admin';
+        else if (isCollector) role = 'collector';
+
+        const { error: profileError } = await (supabase
+          .from('users') as any)
+          .insert([
+            { 
+              id: data.user.id, 
+              name, 
+              role: role as any,
+              balance: 0 
+            }
+          ]);
+        
+        if (profileError && profileError.code !== '23505') {
+          console.error('Profile creation error:', profileError);
+          throw profileError;
+        }
+        
+        console.log('Showing success toast and redirecting');
+        showToast('Sign up is success');
+        navigation.navigate('Login');
       }
     } catch (error: any) {
       console.error('Final catch error:', error);
@@ -84,6 +127,11 @@ export const LoginScreen = () => {
   return (
     <View style={styles.container}>
       <SafeAreaView style={{ flex: 1 }} edges={['top', 'bottom', 'left', 'right']}>
+        {toastMessage ? (
+          <View style={[styles.toast, { width: width - spacing.xl * 2 }]}>
+            <Text style={styles.toastText}>{toastMessage}</Text>
+          </View>
+        ) : null}
         <KeyboardAvoidingView 
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           style={{ flex: 1 }}
@@ -97,8 +145,17 @@ export const LoginScreen = () => {
                 <Logo size={70} style={styles.logo} />
                 <Text style={styles.brandText}>EcoSort</Text>
               </View>
-
-              <Text style={styles.title}>Log in to track your impact</Text>
+              
+              <Text style={styles.title}>Create your account</Text>
+              
+              <Text style={styles.label}>Full Name</Text>
+              <TextInput
+                style={styles.input}
+                value={name}
+                onChangeText={setName}
+                placeholder="John Doe"
+                placeholderTextColor={colors.textBlackSoft}
+              />
 
               <Text style={styles.label}>Email Address</Text>
               <TextInput
@@ -121,23 +178,16 @@ export const LoginScreen = () => {
                 secureTextEntry
               />
 
-              <TouchableOpacity 
-                style={styles.forgotBtn}
-                onPress={() => navigation.navigate('ForgotPassword')}
-              >
-                <Text style={styles.forgotText}>Forgot Password?</Text>
-              </TouchableOpacity>
-
               <Button 
-                title={loading ? 'Processing...' : 'Sign In'} 
-                onPress={handleSignIn} 
+                title={loading ? 'Processing...' : 'Sign Up'} 
+                onPress={handleSignup} 
                 loading={loading}
                 style={styles.button}
               />
               
               <Button 
-                title="New to EcoSort? Join Now" 
-                onPress={() => navigation.navigate('Signup')} 
+                title="Already have an account? Sign In" 
+                onPress={() => navigation.navigate('Login')} 
                 variant="ghost"
                 style={styles.switchBtn}
                 textStyle={{ fontSize: 14 }}
@@ -154,6 +204,23 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.primary,
+  },
+  toast: {
+    position: 'absolute',
+    top: 50,
+    left: spacing.xl,
+    right: spacing.xl,
+    backgroundColor: colors.houseGreen,
+    padding: spacing.md,
+    borderRadius: 8,
+    zIndex: 1000,
+    alignItems: 'center',
+    ...layout.cardShadow,
+  },
+  toastText: {
+    color: colors.white,
+    fontWeight: '600',
+    fontSize: 16,
   },
   content: {
     flexGrow: 1,
@@ -207,15 +274,6 @@ const styles = StyleSheet.create({
   },
   button: {
     marginTop: spacing.xl,
-  },
-  forgotBtn: {
-    alignSelf: 'flex-end',
-    marginTop: spacing.sm,
-  },
-  forgotText: {
-    color: colors.primary,
-    fontSize: 14,
-    fontWeight: '600',
   },
   switchBtn: {
     marginTop: spacing.md,

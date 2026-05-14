@@ -9,8 +9,7 @@ import {
   Platform, 
   ScrollView, 
   useWindowDimensions,
-  Animated,
-  TouchableOpacity
+  Animated
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -30,9 +29,9 @@ const layout = {
   }
 };
 
-export const LoginScreen = () => {
-  const [email, setEmail] = useState('');
+export const ResetPasswordScreen = () => {
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const { width } = useWindowDimensions();
   const navigation = useNavigation<any>();
@@ -55,27 +54,32 @@ export const LoginScreen = () => {
     ]).start();
   }, []);
 
-  const handleSignIn = async () => {
-    if (!email || !password) {
+  const handleResetPassword = async () => {
+    if (!password || !confirmPassword) {
       Alert.alert('Error', 'Please fill in all fields');
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      Alert.alert('Error', 'Passwords do not match');
       return;
     }
 
     setLoading(true);
     try {
-      console.log('Attempting sign in for:', email);
-      const { error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
+      const { error } = await supabase.auth.updateUser({
+        password: password
       });
 
-      if (error) {
-        console.error('Sign in error:', error);
-        throw error;
-      }
+      if (error) throw error;
+      
+      Alert.alert(
+        'Success', 
+        'Your password has been updated successfully.',
+        [{ text: 'Login', onPress: () => navigation.navigate('Login') }]
+      );
     } catch (error: any) {
-      console.error('Final catch error:', error);
-      Alert.alert('Error', error.message || 'An unknown error occurred');
+      Alert.alert('Error', error.message || 'Failed to reset password');
     } finally {
       setLoading(false);
     }
@@ -90,7 +94,7 @@ export const LoginScreen = () => {
         >
           <ScrollView contentContainerStyle={styles.content}>
             <Animated.View style={[
-              styles.form,
+              styles.form, 
               { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }
             ]}>
               <View style={styles.brandGroup}>
@@ -98,49 +102,34 @@ export const LoginScreen = () => {
                 <Text style={styles.brandText}>EcoSort</Text>
               </View>
 
-              <Text style={styles.title}>Log in to track your impact</Text>
+              <Text style={styles.title}>New Password</Text>
+              <Text style={styles.subtitle}>Enter your new password below to regain access.</Text>
 
-              <Text style={styles.label}>Email Address</Text>
-              <TextInput
-                style={styles.input}
-                value={email}
-                onChangeText={setEmail}
-                placeholder="What's your email?"
-                placeholderTextColor={colors.textBlackSoft}
-                autoCapitalize="none"
-                keyboardType="email-address"
-              />
-
-              <Text style={styles.label}>Password</Text>
+              <Text style={styles.label}>New Password</Text>
               <TextInput
                 style={styles.input}
                 value={password}
                 onChangeText={setPassword}
-                placeholder="Enter your password"
+                placeholder="••••••••"
                 placeholderTextColor={colors.textBlackSoft}
                 secureTextEntry
               />
 
-              <TouchableOpacity 
-                style={styles.forgotBtn}
-                onPress={() => navigation.navigate('ForgotPassword')}
-              >
-                <Text style={styles.forgotText}>Forgot Password?</Text>
-              </TouchableOpacity>
+              <Text style={styles.label}>Confirm New Password</Text>
+              <TextInput
+                style={styles.input}
+                value={confirmPassword}
+                onChangeText={setConfirmPassword}
+                placeholder="••••••••"
+                placeholderTextColor={colors.textBlackSoft}
+                secureTextEntry
+              />
 
               <Button 
-                title={loading ? 'Processing...' : 'Sign In'} 
-                onPress={handleSignIn} 
+                title={loading ? 'Updating...' : 'Update Password'} 
+                onPress={handleResetPassword} 
                 loading={loading}
                 style={styles.button}
-              />
-              
-              <Button 
-                title="New to EcoSort? Join Now" 
-                onPress={() => navigation.navigate('Signup')} 
-                variant="ghost"
-                style={styles.switchBtn}
-                textStyle={{ fontSize: 14 }}
               />
             </Animated.View>
           </ScrollView>
@@ -186,8 +175,15 @@ const styles = StyleSheet.create({
     fontSize: 22,
     fontWeight: '700',
     color: colors.textBlack,
-    marginBottom: spacing.lg,
+    marginBottom: spacing.xs,
     textAlign: 'center',
+  },
+  subtitle: {
+    fontSize: 14,
+    color: colors.textBlackSoft,
+    textAlign: 'center',
+    marginBottom: spacing.lg,
+    lineHeight: 20,
   },
   label: {
     fontSize: 14,
@@ -207,17 +203,5 @@ const styles = StyleSheet.create({
   },
   button: {
     marginTop: spacing.xl,
-  },
-  forgotBtn: {
-    alignSelf: 'flex-end',
-    marginTop: spacing.sm,
-  },
-  forgotText: {
-    color: colors.primary,
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  switchBtn: {
-    marginTop: spacing.md,
   },
 });

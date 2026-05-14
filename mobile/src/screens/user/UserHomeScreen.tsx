@@ -20,6 +20,7 @@ import { BottomNav } from '../../components/BottomNav';
 import { Logo } from '../../components/Logo';
 import { useAuthStore } from '../../store/authStore';
 import { usePickupStore } from '../../store/pickupStore';
+import { useNotificationStore } from '../../store/notificationStore';
 import { 
   Bell, 
   History, 
@@ -32,6 +33,7 @@ import {
   Droplets, 
   Rocket, 
   MapPin, 
+  Home,
   ShieldCheck,
   Truck,
   ChevronRight
@@ -40,6 +42,7 @@ import {
 export const UserHomeScreen = () => {
   const { user, transactions, fetchTransactions, fetchProfile } = useAuthStore();
   const { requests, fetchUserRequests } = usePickupStore();
+  const { unreadCount, fetchNotifications } = useNotificationStore();
   const [refreshing, setRefreshing] = useState(false);
   const navigation = useNavigation<any>();
   const colors = useThemeColors();
@@ -51,6 +54,7 @@ export const UserHomeScreen = () => {
       fetchUserRequests(user.id);
       fetchTransactions();
       fetchProfile();
+      fetchNotifications(user.id);
     }
   }, [user?.id]);
 
@@ -60,7 +64,8 @@ export const UserHomeScreen = () => {
       await Promise.all([
         fetchUserRequests(user.id),
         fetchTransactions(),
-        fetchProfile()
+        fetchProfile(),
+        fetchNotifications(user.id)
       ]);
     }
     setRefreshing(false);
@@ -169,6 +174,11 @@ export const UserHomeScreen = () => {
               onPress={() => navigation.navigate('Notification')}
             >
               <Bell color="#006948" size={22} />
+              {unreadCount > 0 && (
+                <View style={styles.badgeContainer}>
+                  <Text style={styles.badgeTextCount}>{unreadCount > 9 ? '9+' : unreadCount}</Text>
+                </View>
+              )}
             </TouchableOpacity>
           </View>
 
@@ -328,13 +338,16 @@ export const UserHomeScreen = () => {
                 <Text style={styles.guideSubtitle}>Learn the basics of earning.</Text>
               </TouchableOpacity>
 
-              <View style={styles.guideCard}>
+              <TouchableOpacity 
+                style={styles.guideCard}
+                onPress={() => navigation.navigate('AddYourHome')}
+              >
                 <View style={[styles.guideIconBox, { backgroundColor: '#e1f5fe' }]}>
-                  <MapPin color="#03a9f4" size={24} />
+                  <Home color="#03a9f4" size={24} />
                 </View>
-                <Text style={styles.guideTitle}>Add your bins</Text>
-                <Text style={styles.guideSubtitle}>Register home bins.</Text>
-              </View>
+                <Text style={styles.guideTitle}>Add your home</Text>
+                <Text style={styles.guideSubtitle}>Setup your home address.</Text>
+              </TouchableOpacity>
 
               <TouchableOpacity 
                 style={styles.guideCard}
@@ -398,6 +411,7 @@ const styles = StyleSheet.create({
     borderRadius: 22,
     justifyContent: 'center',
     alignItems: 'center',
+    position: 'relative',
     ...Platform.select({
       ios: {
         shadowColor: '#000',
@@ -409,6 +423,25 @@ const styles = StyleSheet.create({
         elevation: 3,
       },
     }),
+  },
+  badgeContainer: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    backgroundColor: '#ff4444',
+    minWidth: 16,
+    height: 16,
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 4,
+    borderWidth: 1.5,
+    borderColor: '#fff',
+  },
+  badgeTextCount: {
+    color: '#fff',
+    fontSize: 9,
+    fontWeight: '800',
   },
   heroSection: {
     marginBottom: spacing.xl,

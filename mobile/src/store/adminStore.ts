@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { supabase } from '../services/api/supabase';
+import { useNotificationStore } from './notificationStore';
 
 interface AdminState {
   pendingRewards: any[];
@@ -86,6 +87,14 @@ export const useAdminStore = create<AdminState>((set, get) => ({
         .eq('id', tx.user_id);
       
       if (balanceError) throw balanceError;
+
+      // 4. Create Notification
+      await useNotificationStore.getState().createNotification({
+        userId: tx.user_id,
+        title: 'Reward Approved! 🎉',
+        message: `Your reward of Rp ${tx.amount.toLocaleString()} has been approved and added to your wallet.`,
+        type: 'reward'
+      });
 
       await get().fetchPendingRewards();
       return { success: true };

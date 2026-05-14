@@ -1,11 +1,13 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { 
   View, 
   Text, 
   StyleSheet, 
   TouchableOpacity, 
   FlatList, 
-  StatusBar 
+  StatusBar,
+  RefreshControl,
+  ActivityIndicator
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -17,51 +19,41 @@ import {
   Wallet, 
   Recycle,
   Clock,
-  Trash2
+  Trash2,
+  X
 } from 'lucide-react-native';
 import { spacing } from '../../services/theme/spacing';
 import { colors } from '../../services/theme/colors';
 import { Card } from '../../components/Card';
-
-interface Notification {
-  id: string;
-  title: string;
-  message: string;
-  type: 'pickup' | 'reward' | 'system';
-  time: string;
-  isRead: boolean;
-}
+import { useNotificationStore } from '../../store/notificationStore';
+import { useAuthStore } from '../../store/authStore';
 
 export const NotificationScreen = () => {
   const navigation = useNavigation<any>();
-  
-  // Simulated notifications for now (Phase 2 will connect this to Supabase table)
-  const [notifications, setNotifications] = useState<Notification[]>([
-    {
-      id: '1',
-      title: 'Reward Approved! 🎉',
-      message: 'Your reward for the plastic pickup has been approved. Rp 7,000 added to wallet.',
-      type: 'reward',
-      time: '2 hours ago',
-      isRead: false
-    },
-    {
-      id: '2',
-      title: 'Collector Assigned',
-      message: 'A collector is on their way to pick up your waste bag.',
-      type: 'pickup',
-      time: '5 hours ago',
-      isRead: true
-    },
-    {
-      id: '3',
-      title: 'Welcome to EcoSort!',
-      message: 'Start scanning waste to earn real-world rewards and save the planet.',
-      type: 'system',
-      time: '1 day ago',
-      isRead: true
+  const { user } = useAuthStore();
+  const { 
+    notifications, 
+    loading, 
+    fetchNotifications, 
+    markAsRead, 
+    markAllAsRead, 
+    deleteNotification 
+  } = useNotificationStore();
+  const [refreshing, setRefreshing] = useState(false);
+
+  useEffect(() => {
+    if (user) {
+      fetchNotifications(user.id);
     }
-  ]);
+  }, [user]);
+
+  const onRefresh = async () => {
+    if (user) {
+      setRefreshing(true);
+      await fetchNotifications(user.id);
+      setRefreshing(false);
+    }
+  };
 
   const getIcon = (type: string) => {
     switch(type) {
@@ -71,24 +63,37 @@ export const NotificationScreen = () => {
     }
   };
 
-  const markAllRead = () => {
-    setNotifications(notifications.map(n => ({ ...n, isRead: true })));
+  const handleMarkAllRead = () => {
+    if (user) markAllAsRead(user.id);
   };
 
-  const renderItem = ({ item }: { item: Notification }) => (
-    <Card style={[styles.notificationCard, !item.isRead && styles.unreadCard]}>
-      <View style={[styles.iconBox, { backgroundColor: item.isRead ? '#f1f5f9' : '#e0f2f1' }]}>
-        {getIcon(item.type)}
-      </View>
-      <View style={styles.content}>
-        <View style={styles.row}>
-          <Text style={[styles.title, !item.isRead && styles.unreadTitle]}>{item.title}</Text>
-          {!item.isRead && <View style={styles.unreadDot} />}
+  const renderItem = ({ item }: { item: any }) => (
+    <TouchableOpacity 
+      activeOpacity={0.7} 
+      onPress={() => !item.is_read && markAsRead(item.id)}
+    >
+      <Card style={[styles.notificationCard, !item.is_read && styles.unreadCard]}>
+        <View style={[styles.iconBox, { backgroundColor: item.is_read ? '#f1f5f9' : '#e0f2f1' }]}>
+          {getIcon(item.type)}
         </View>
-        <Text style={styles.message} numberOfLines={2}>{item.message}</Text>
-        <Text style={styles.time}>{item.time}</Text>
-      </View>
-    </Card>
+        <View style={styles.content}>
+          <View style={styles.row}>
+            <Text style={[styles.title, !item.is_read && styles.unreadTitle]} numberOfLines={1}>{item.title}</Text>
+            <TouchableOpacity 
+              onPress={() => deleteNotification(item.id)}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            >
+              <X color="#94a3b8" size={16} />
+            </TouchableOpacity>
+          </View>
+          <Text style={styles.message} numberOfLines={3}>{item.message}</Text>
+          <View style={styles.footer}>
+            <Text style={styles.time}>{new Date(item.created_at).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}</Text>
+            {!item.is_read && <View style={styles.unreadDot} />}
+          </View>
+        </View>
+      </Card>
+    </TouchableOpacity>
   );
 
   return (
@@ -101,24 +106,33 @@ export const NotificationScreen = () => {
           <ChevronLeft color={colors.textBlack} size={28} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Notifications</Text>
-        <TouchableOpacity onPress={markAllRead}>
+        <TouchableOpacity onPress={handleMarkAllRead}>
           <Text style={styles.markReadText}>Mark all read</Text>
         </TouchableOpacity>
       </View>
 
-      <FlatList
-        data={notifications}
-        keyExtractor={item => item.id}
-        renderItem={renderItem}
-        contentContainerStyle={styles.listContent}
-        ListEmptyComponent={
-          <View style={styles.emptyContainer}>
-            <Bell color="#cbd5e1" size={64} strokeWidth={1} />
-            <Text style={styles.emptyText}>No notifications yet</Text>
-            <Text style={styles.emptySub}>We'll alert you when there's an update on your pickups.</Text>
-          </View>
-        }
-      />
+      {loading && !refreshing ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator color={colors.primary} size="large" />
+        </View>
+      ) : (
+        <FlatList
+          data={notifications}
+          keyExtractor={item => item.id}
+          renderItem={renderItem}
+          contentContainerStyle={styles.listContent}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[colors.primary]} />
+          }
+          ListEmptyComponent={
+            <View style={styles.emptyContainer}>
+              <Bell color="#cbd5e1" size={64} strokeWidth={1} />
+              <Text style={styles.emptyText}>No notifications yet</Text>
+              <Text style={styles.emptySub}>We'll alert you when there's an update on your pickups.</Text>
+            </View>
+          }
+        />
+      )}
     </SafeAreaView>
   );
 };
@@ -154,9 +168,14 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#006948',
   },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   listContent: {
     padding: spacing.lg,
-    gap: spacing.md,
+    paddingBottom: 100, // Space for bottom nav
   },
   notificationCard: {
     flexDirection: 'row',
@@ -166,6 +185,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderWidth: 1,
     borderColor: '#f1f5f9',
+    marginBottom: spacing.md,
   },
   unreadCard: {
     borderColor: '#e0f2f1',
@@ -191,6 +211,8 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '600',
     color: '#334155',
+    flex: 1,
+    marginRight: 8,
   },
   unreadTitle: {
     color: '#1e293b',
@@ -206,7 +228,12 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#64748b',
     lineHeight: 18,
-    marginBottom: 6,
+    marginBottom: 8,
+  },
+  footer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
   time: {
     fontSize: 11,
@@ -233,3 +260,4 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   }
 });
+
