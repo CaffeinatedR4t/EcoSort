@@ -5,6 +5,7 @@ import { UserHomeScreen } from '../UserHomeScreen';
 import { NavigationContainer } from '@react-navigation/native';
 import { useAuthStore } from '../../../store/authStore';
 import { usePickupStore } from '../../../store/pickupStore';
+import { useNotificationStore } from '../../../store/notificationStore';
 
 // Mock navigation
 jest.mock('@react-navigation/native', () => {
@@ -20,6 +21,7 @@ jest.mock('@react-navigation/native', () => {
 // Mock stores
 jest.mock('../../../store/authStore');
 jest.mock('../../../store/pickupStore');
+jest.mock('../../../store/notificationStore');
 
 // Mock supabase
 jest.mock('../../../services/api/supabase', () => ({
@@ -52,11 +54,18 @@ describe('UserHomeScreen', () => {
   beforeEach(() => {
     (useAuthStore as any).mockReturnValue({
       user: { id: '1', name: 'Test User', balance: 1000, role: 'user' },
+      transactions: [],
+      fetchTransactions: jest.fn(),
+      fetchProfile: jest.fn(),
     });
     (usePickupStore as any).mockReturnValue({
       requests: [],
       fetchUserRequests: jest.fn(),
       loading: false,
+    });
+    (useNotificationStore as any).mockReturnValue({
+      unreadCount: 0,
+      fetchNotifications: jest.fn(),
     });
   });
 
@@ -71,12 +80,13 @@ describe('UserHomeScreen', () => {
   });
 
   it('renders the Wallet balance', () => {
-    const { getByText } = render(
+    const { getByText, queryByText } = render(
       <NavigationContainer>
         <UserHomeScreen />
       </NavigationContainer>
     );
 
     expect(getByText('Rp 1,000')).toBeTruthy();
+    expect(queryByText(/this week/i)).toBeNull();
   });
 });

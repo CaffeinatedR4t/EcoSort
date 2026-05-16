@@ -9,7 +9,7 @@ import {
   useWindowDimensions, 
   StatusBar 
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { 
   ChevronLeft, 
@@ -31,6 +31,7 @@ import { Button } from '../../components/Button';
 export const GetStartedScreen = () => {
   const navigation = useNavigation<any>();
   const colors = useThemeColors();
+  const insets = useSafeAreaInsets();
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top', 'left', 'right']}>
@@ -130,7 +131,7 @@ export const GetStartedScreen = () => {
       </ScrollView>
 
       {/* Sticky Bottom Button */}
-      <View style={[styles.footer, { paddingBottom: Platform.OS === 'ios' ? spacing.xl : spacing.lg }]}>
+      <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, spacing.xl) }]}>
         <TouchableOpacity 
           style={[styles.startBtn, { backgroundColor: colors.primary }]}
           onPress={() => navigation.navigate('Scan')}

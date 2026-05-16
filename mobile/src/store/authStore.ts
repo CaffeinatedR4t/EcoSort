@@ -8,6 +8,16 @@ interface UserProfile {
   balance: number;
 }
 
+const normalizeProfile = (profile: any): UserProfile => {
+  const role = String(profile?.role || 'user').trim().toLowerCase();
+
+  return {
+    ...profile,
+    role: role === 'admin' || role === 'collector' ? role : 'user',
+    balance: Number(profile?.balance || 0),
+  };
+};
+
 interface AuthState {
   user: UserProfile | null;
   session: any | null;
@@ -53,14 +63,14 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         .maybeSingle();
       
       if (profile) {
-        set({ user: profile as UserProfile });
+        set({ user: normalizeProfile(profile) });
       }
     }
 
     // 3. Listen for auth changes
     supabase.auth.onAuthStateChange(async (event, session) => {
       console.log('Auth state change:', event, session?.user?.email);
-      set({ session });
+      set({ session, user: null });
       
       if (session?.user) {
         try {
@@ -81,7 +91,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           }
 
           if (profile) {
-            set({ user: profile as UserProfile });
+            set({ user: normalizeProfile(profile) });
           } else {
             console.warn('No profile found for user ID:', session.user.id);
           }
@@ -104,7 +114,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       .maybeSingle();
     
     if (profile && !error) {
-      set({ user: profile as UserProfile });
+      set({ user: normalizeProfile(profile) });
     }
   },
   fetchTransactions: async () => {

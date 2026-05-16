@@ -44,11 +44,11 @@ const AdminStack = createNativeStackNavigator();
 
 const UserNavigator = () => (
   <UserStack.Navigator screenOptions={{ headerShown: false }}>
-    <UserStack.Screen name="UserHome" component={UserHomeScreen} />
+    <UserStack.Screen name="UserHome" component={UserHomeScreen} options={{ animation: 'none' }} />
     <UserStack.Screen name="GetStarted" component={GetStartedScreen} />
-    <UserStack.Screen name="Scan" component={ScanScreen} />
+    <UserStack.Screen name="Scan" component={ScanScreen} options={{ animation: 'none' }} />
     <UserStack.Screen name="PickLocation" component={PickLocationScreen} />
-    <UserStack.Screen name="Profile" component={ProfileScreen} />
+    <UserStack.Screen name="Profile" component={ProfileScreen} options={{ animation: 'none' }} />
     <UserStack.Screen name="RequestDetail" component={RequestDetailScreen} />
     <UserStack.Screen name="Withdrawal" component={WithdrawalScreen} />
     <UserStack.Screen name="Notification" component={NotificationScreen} />
@@ -61,12 +61,15 @@ const CollectorNavigator = () => (
   <CollectorStack.Navigator screenOptions={{ headerShown: false }}>
     <CollectorStack.Screen name="CollectorHome" component={CollectorHomeScreen} />
     <CollectorStack.Screen name="CollectorJobDetail" component={CollectorJobDetailScreen} />
+    <CollectorStack.Screen name="Withdrawal" component={WithdrawalScreen} />
+    <CollectorStack.Screen name="Notification" component={NotificationScreen} />
   </CollectorStack.Navigator>
 );
 
 const AdminNavigator = () => (
   <AdminStack.Navigator screenOptions={{ headerShown: false }}>
     <AdminStack.Screen name="AdminHome" component={AdminHomeScreen} />
+    <AdminStack.Screen name="Notification" component={NotificationScreen} />
   </AdminStack.Navigator>
 );
 

@@ -9,7 +9,8 @@ import {
   Alert, 
   ActivityIndicator, 
   Platform,
-  Modal
+  Modal,
+  StatusBar
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CameraView, useCameraPermissions } from 'expo-camera';
@@ -109,6 +110,7 @@ export const ScanScreen = () => {
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
+      <StatusBar barStyle="light-content" backgroundColor="#006948" />
       <View style={styles.header}>
         <Text style={styles.title}>Scan Waste</Text>
         <View style={styles.headerActions}>

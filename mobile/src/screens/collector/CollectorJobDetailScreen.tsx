@@ -57,6 +57,7 @@ export const CollectorJobDetailScreen = () => {
   const [classification, setClassification] = useState<GeminiClassification | null>(null);
   const [selectedType, setSelectedType] = useState<string | null>(null);
   const [isClassifying, setIsClassifying] = useState(false);
+  const [isManual, setIsManual] = useState(false);
   
   // Map and Location States
   const [driverPos, setDriverPos] = useState<any>(null);
@@ -209,8 +210,8 @@ export const CollectorJobDetailScreen = () => {
 
     const finalClassification = {
       waste_type: selectedType,
-      confidence: classification?.confidence || 1.0,
-      image_uri: photo.uri
+      confidence: classification?.confidence || (isManual && !photo ? 1.0 : 0.0),
+      image_uri: photo?.uri || 'manual_entry'
     };
 
     Alert.alert(
@@ -354,7 +355,13 @@ export const CollectorJobDetailScreen = () => {
               )}
             </TouchableOpacity>
 
-            {photo && (
+            {!photo && !isManual && (
+              <TouchableOpacity onPress={() => setIsManual(true)} style={{ alignItems: 'center', marginBottom: spacing.lg }}>
+                <Text style={{ color: colors.primary, fontWeight: '700', textDecorationLine: 'underline' }}>Or Verify Manually (Skip AI)</Text>
+              </TouchableOpacity>
+            )}
+
+            {(photo || isManual) && (
               <View style={styles.typeSelectionSection}>
                 <Text style={styles.sectionLabel}>VERIFY WASTE TYPE</Text>
                 <View style={styles.chipContainer}>
@@ -392,7 +399,7 @@ export const CollectorJobDetailScreen = () => {
               title="Complete Collection" 
               onPress={handleComplete}
               loading={loading}
-              disabled={!photo || !weight || isClassifying || !selectedType}
+              disabled={(!photo && !isManual) || !weight || isClassifying || !selectedType}
               style={styles.confirmBtn}
             />
           </View>

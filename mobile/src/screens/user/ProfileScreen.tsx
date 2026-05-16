@@ -10,6 +10,7 @@ import {
   Image
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useNavigation } from '@react-navigation/native';
 import { useAuthStore } from '../../store/authStore';
 import { supabase } from '../../services/api/supabase';
 import { spacing } from '../../services/theme/spacing';
@@ -21,7 +22,6 @@ import {
   Recycle, 
   Award, 
   UserCircle, 
-  BellDot, 
   HelpCircle, 
   LogOut, 
   ChevronRight
@@ -29,6 +29,7 @@ import {
 
 export const ProfileScreen = () => {
   const { user, logout } = useAuthStore();
+  const navigation = useNavigation<any>();
   const insets = useSafeAreaInsets();
 
   const [totalWeight, setTotalWeight] = useState(0);
@@ -79,7 +80,7 @@ export const ProfileScreen = () => {
 
   return (
     <View style={[styles.container, { backgroundColor: '#EEF4FF' }]}>
-      <StatusBar barStyle="dark-content" backgroundColor="#EEF4FF" translucent={true} />
+      <StatusBar barStyle="light-content" backgroundColor="#006948" />
       
       <SafeAreaView style={{ flex: 1 }} edges={['top', 'left', 'right']}>
         <ScrollView 
@@ -97,7 +98,11 @@ export const ProfileScreen = () => {
               </View>
               <Text style={[styles.logoText, { color: '#006948' }]}>EcoSort</Text>
             </View>
-            <TouchableOpacity style={[styles.iconButton, { backgroundColor: '#fff' }]}>
+            <TouchableOpacity
+              testID="profile-notification-button"
+              style={[styles.iconButton, { backgroundColor: '#fff' }]}
+              onPress={() => navigation.navigate('Notification')}
+            >
               <Bell color="#006948" size={22} />
             </TouchableOpacity>
           </View>
@@ -149,14 +154,6 @@ export const ProfileScreen = () => {
               <ChevronRight color="#9ca3af" size={20} />
             </TouchableOpacity>
             
-            <TouchableOpacity style={styles.menuItem}>
-              <View style={[styles.menuIconBox, {backgroundColor: '#ede9fe'}]}>
-                <BellDot color="#059669" size={20} />
-              </View>
-              <Text style={styles.menuText}>Notifications</Text>
-              <ChevronRight color="#9ca3af" size={20} />
-            </TouchableOpacity>
-
             <TouchableOpacity style={styles.menuItem}>
               <View style={[styles.menuIconBox, {backgroundColor: '#f1f5f9'}]}>
                 <HelpCircle color="#475569" size={20} />

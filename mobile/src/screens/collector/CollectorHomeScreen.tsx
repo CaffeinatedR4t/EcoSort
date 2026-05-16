@@ -3,15 +3,15 @@ import {
   View,
   Text,
   StyleSheet,
-  Pressable,
   Alert,
   RefreshControl,
   TouchableOpacity,
   StatusBar,
   Platform,
   ScrollView,
-  Switch,
   ActivityIndicator,
+  Animated,
+  useWindowDimensions,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -20,8 +20,10 @@ import * as Location from 'expo-location';
 import { colors } from '../../services/theme/colors';
 import { spacing } from '../../services/theme/spacing';
 import { Card } from '../../components/Card';
+import { Logo } from '../../components/Logo';
 import { useAuthStore } from '../../store/authStore';
 import { usePickupStore } from '../../store/pickupStore';
+import { useNotificationStore } from '../../store/notificationStore';
 import { supabase } from '../../services/api/supabase';
 import {
   LogOut,
@@ -36,13 +38,12 @@ import {
   Map as MapIcon,
   History,
   User,
+  Home,
   Recycle,
-  Zap,
-  CalendarDays,
-  Wrench,
-  BarChart2,
   Hourglass,
   UserCircle,
+  HelpCircle,
+  Award,
   MapPin,
   CircleCheckBig,
   ScanLine,
@@ -63,6 +64,13 @@ interface HistoryItem {
   }[];
 }
 
+interface DriverStats {
+  completedJobs: number;
+  totalWeightKg: number;
+  completedEarnings: number;
+  pendingEarnings: number;
+}
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 const getJobAccentColor = (hint: string = '') => {
   const h = hint.toLowerCase();
@@ -79,15 +87,6 @@ const getJobTypeLabel = (hint: string = '') => {
   return upper ? upper.charAt(0) + upper.slice(1).toLowerCase() : 'Mixed Waste';
 };
 
-const getEstimatedReward = (hint: string = '') => {
-  const h = hint.toLowerCase();
-  if (h.includes('metal'))                             return 'Rp 18.000';
-  if (h.includes('plastic'))                           return 'Rp 14.000';
-  if (h.includes('paper') || h.includes('cardboard')) return 'Rp 12.000';
-  if (h.includes('organic'))                           return 'Rp 9.000';
-  return 'Rp 10.000';
-};
-
 const getWasteTypeBadgeColor = (type: string) => {
   switch (type.toLowerCase()) {
     case 'plastic': return { bg: '#dbeafe', text: '#1d4ed8' };
@@ -98,6 +97,8 @@ const getWasteTypeBadgeColor = (type: string) => {
     default:        return { bg: '#f1f5f9', text: '#475569' };
   }
 };
+
+const formatRupiah = (amount: number = 0) => `Rp ${amount.toLocaleString('id-ID')}`;
 
 const getTimelineDotColor = (type: string) => {
   switch (type.toLowerCase()) {
@@ -154,6 +155,49 @@ const runTSP = (
 };
 
 // ─── Bottom Nav ───────────────────────────────────────────────────────────────
+const AnimatedCollectorNavItem = ({
+  isActive,
+  onPress,
+  IconComp,
+  label,
+}: {
+  isActive: boolean;
+  onPress: () => void;
+  IconComp: any;
+  label: string;
+}) => {
+  const scaleAnim = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    Animated.spring(scaleAnim, {
+      toValue: isActive ? 1.15 : 1,
+      useNativeDriver: true,
+      friction: 4,
+      tension: 40,
+    }).start();
+  }, [isActive, scaleAnim]);
+
+  return (
+    <TouchableOpacity
+      onPress={onPress}
+      style={navStyles.touchable}
+      activeOpacity={0.7}
+      testID={`collector-nav-${label.toLowerCase()}`}
+    >
+      <Animated.View style={[navStyles.navItemInner, { transform: [{ scale: scaleAnim }] }]}>
+        <IconComp
+          size={24}
+          color={isActive ? '#006948' : '#94a3b8'}
+          strokeWidth={isActive ? 2.5 : 2}
+        />
+        <Text style={[navStyles.label, { color: isActive ? '#006948' : '#94a3b8' }]}>
+          {label}
+        </Text>
+      </Animated.View>
+    </TouchableOpacity>
+  );
+};
+
 const CollectorBottomNav = ({
   activeTab,
   onTabPress,
@@ -163,29 +207,25 @@ const CollectorBottomNav = ({
 }) => {
   const insets = useSafeAreaInsets();
 
-  const tabs: { key: TabType; icon: any }[] = [
-    { key: 'available', icon: Bell },
-    { key: 'active',    icon: MapIcon },
-    { key: 'history',   icon: History },
-    { key: 'profile',   icon: User },
+  const tabs: { key: TabType; icon: any; label: string }[] = [
+    { key: 'available', icon: Home, label: 'Home' },
+    { key: 'active',    icon: MapIcon, label: 'Route' },
+    { key: 'history',   icon: History, label: 'History' },
+    { key: 'profile',   icon: User, label: 'Profile' },
   ];
 
   return (
     <View style={[navStyles.container, { paddingBottom: insets.bottom || 14 }]}>
       {tabs.map((tab) => {
         const isActive = activeTab === tab.key;
-        const IconComp = tab.icon;
         return (
-          <Pressable
+          <AnimatedCollectorNavItem
             key={tab.key}
+            isActive={isActive}
             onPress={() => onTabPress(tab.key)}
-            android_ripple={{ color: 'transparent' }}
-            style={navStyles.touchable}
-          >
-            <View style={[navStyles.iconWrapper, isActive && navStyles.activeIconWrapper]}>
-              <IconComp size={24} color={isActive ? '#fff' : '#94a3b8'} strokeWidth={2.2} />
-            </View>
-          </Pressable>
+            IconComp={tab.icon}
+            label={tab.label}
+          />
         );
       })}
     </View>
@@ -200,25 +240,32 @@ const navStyles = StyleSheet.create({
     justifyContent: 'space-around',
     alignItems: 'center',
     backgroundColor: '#fff',
-    paddingTop: 10,
+    paddingTop: 0,
     borderTopWidth: 1,
-    borderTopColor: '#f1f5f9',
+    borderTopColor: 'rgba(0, 0, 0, 0.05)',
+    zIndex: 1000,
     ...Platform.select({
-      ios: { shadowColor: '#000', shadowOffset: { width: 0, height: -4 }, shadowOpacity: 0.05, shadowRadius: 8 },
+      ios: { shadowColor: '#000', shadowOffset: { width: 0, height: -2 }, shadowOpacity: 0.05, shadowRadius: 5 },
       android: { elevation: 10 },
     }),
   },
-  touchable: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  iconWrapper: {
-    width: 50, height: 50, borderRadius: 25,
-    justifyContent: 'center', alignItems: 'center', overflow: 'hidden',
-  },
-  activeIconWrapper: { backgroundColor: '#006948' },
+  touchable: { flex: 1, height: 60, alignItems: 'center', justifyContent: 'center' },
+  navItemInner: { alignItems: 'center', justifyContent: 'center' },
+  label: { fontSize: 12, fontWeight: '600', marginTop: 4 },
 });
 
 // ─── Profile Tab ──────────────────────────────────────────────────────────────
-const ProfileTab = ({ user, logout }: { user: any; logout: () => void }) => {
-  const [isOnline, setIsOnline] = useState(true);
+const ProfileTab = ({
+  user,
+  logout,
+  stats,
+  header,
+}: {
+  user: any;
+  logout: () => void;
+  stats: DriverStats;
+  header?: React.ReactNode;
+}) => {
   const insets = useSafeAreaInsets();
 
   const driverId = user?.id
@@ -227,159 +274,173 @@ const ProfileTab = ({ user, logout }: { user: any; logout: () => void }) => {
 
   return (
     <ScrollView
-      contentContainerStyle={[profileStyles.scroll, { paddingBottom: insets.bottom + 90 }]}
+      style={{ flex: 1 }}
+      contentContainerStyle={[
+        profileStyles.scroll, 
+        { paddingBottom: Platform.OS === 'ios' ? insets.bottom + 100 : 120 }
+      ]}
       showsVerticalScrollIndicator={false}
     >
-      {/* Profile Card */}
-      <View style={profileStyles.card}>
-        <View style={profileStyles.avatarContainer}>
-          <View style={profileStyles.avatarBg}>
-            <UserCircle color="#006948" size={72} strokeWidth={1} />
-          </View>
-          <View style={profileStyles.avatarBadge}>
-            <View style={profileStyles.avatarBadgeDot} />
-          </View>
+      {header}
+      <View style={profileStyles.profileCard}>
+        <View style={profileStyles.avatarWrapper}>
+          <UserCircle color="#fff" size={80} strokeWidth={1} />
         </View>
-        <Text style={profileStyles.profileName}>{user?.name || 'Collector'}</Text>
-        <Text style={profileStyles.profileId}>Driver ID: {driverId}</Text>
-        <View style={profileStyles.rankBadge}>
-          <Text style={profileStyles.rankIcon}>🏅</Text>
-          <Text style={profileStyles.rankText}>Senior Collector</Text>
-        </View>
-        <View style={profileStyles.statusRow}>
-          <Text style={profileStyles.statusLabel}>Status</Text>
-          <Switch
-            value={isOnline}
-            onValueChange={setIsOnline}
-            trackColor={{ false: '#cbd5e1', true: '#006948' }}
-            thumbColor="#fff"
-            style={{ transform: [{ scaleX: 0.85 }, { scaleY: 0.85 }] }}
-          />
-          <Text style={[profileStyles.statusText, { color: isOnline ? '#006948' : '#94a3b8' }]}>
-            {isOnline ? 'Online' : 'Offline'}
-          </Text>
+        <Text style={profileStyles.userName}>{user?.name || 'Collector'}</Text>
+        <Text style={profileStyles.userTitle}>Eco Collector • Driver ID {driverId}</Text>
+      </View>
+
+      <View style={profileStyles.impactCard}>
+        <View style={profileStyles.impactInfo}>
+          <Text style={profileStyles.impactLabel}>Total Weight Collected</Text>
+          <View style={profileStyles.impactValueRow}>
+            <Text style={profileStyles.impactValue}>{stats.totalWeightKg.toFixed(0)}</Text>
+            <Text style={profileStyles.impactUnit}>kg</Text>
+          </View>
         </View>
       </View>
 
-      {/* Vehicle Info */}
-      <View style={profileStyles.card}>
+      <View style={profileStyles.statsRow}>
+        <Card style={profileStyles.smallStatCard}>
+          <Recycle color="#006948" size={24} style={profileStyles.statIcon} />
+          <Text style={profileStyles.smallStatValue}>{stats.completedJobs.toLocaleString('id-ID')}</Text>
+          <Text style={profileStyles.smallStatLabel}>JOBS</Text>
+        </Card>
+        <Card style={profileStyles.smallStatCard}>
+          <Award color="#a36700" size={24} style={profileStyles.statIcon} />
+          <Text style={profileStyles.smallStatValue}>{formatRupiah(stats.completedEarnings)}</Text>
+          <Text style={profileStyles.smallStatLabel}>EARNINGS</Text>
+        </Card>
+      </View>
+
+      <Card style={profileStyles.vehicleCard}>
         <View style={profileStyles.sectionHeader}>
           <View style={[profileStyles.sectionIconBox, { backgroundColor: '#e0f0ff' }]}>
             <Truck color="#0284c7" size={20} />
           </View>
           <Text style={profileStyles.sectionTitle}>Vehicle Info</Text>
         </View>
-        <View style={profileStyles.vehicleGrid}>
-          <View style={profileStyles.vehicleCell}>
-            <Text style={profileStyles.vehicleCellLabel}>Vehicle Type</Text>
-            <Text style={profileStyles.vehicleCellValue}>Compactor Truck</Text>
-          </View>
-          <View style={profileStyles.vehicleCell}>
-            <Text style={profileStyles.vehicleCellLabel}>License Plate</Text>
-            <Text style={profileStyles.vehicleCellValue}>ECO-99X</Text>
-          </View>
-        </View>
-        <View style={profileStyles.maintenanceRow}>
-          <View>
-            <Text style={profileStyles.vehicleCellLabel}>Next Maintenance</Text>
-            <Text style={profileStyles.vehicleCellValue}>Oct 15, 2023</Text>
-          </View>
-          <Wrench color="#94a3b8" size={20} />
-        </View>
-      </View>
+        <Text style={profileStyles.emptyVehicleText}>Vehicle details not configured</Text>
+      </Card>
 
-      {/* Past Statistics */}
-      <View style={profileStyles.card}>
-        <View style={profileStyles.sectionHeader}>
-          <View style={[profileStyles.sectionIconBox, { backgroundColor: '#fef3e2' }]}>
-            <BarChart2 color="#b45309" size={20} />
+      <Card style={profileStyles.menuCard}>
+        <TouchableOpacity style={profileStyles.menuItem}>
+          <View style={[profileStyles.menuIconBox, { backgroundColor: '#e0f2fe' }]}>
+            <UserCircle color="#0284c7" size={20} />
           </View>
-          <Text style={profileStyles.sectionTitle}>Past Statistics</Text>
-        </View>
-        <View style={profileStyles.statsGrid}>
-          {[
-            { icon: <Recycle color="#006948" size={26} />,      value: '1,240', label: 'Total Deposits' },
-            { icon: <Hourglass color="#006948" size={26} />,    value: '4.5t',  label: 'Total Weight' },
-            { icon: <Zap color="#006948" size={26} />,          value: '98%',   label: 'Impact Score' },
-            { icon: <CalendarDays color="#006948" size={26} />, value: '342',   label: 'Active Days' },
-          ].map((s, i) => (
-            <View key={i} style={profileStyles.statCell}>
-              {s.icon}
-              <Text style={profileStyles.statValue}>{s.value}</Text>
-              <Text style={profileStyles.statLabel}>{s.label}</Text>
-            </View>
-          ))}
-        </View>
-      </View>
+          <Text style={profileStyles.menuText}>Account Settings</Text>
+          <ChevronRight color="#9ca3af" size={20} />
+        </TouchableOpacity>
+
+        <TouchableOpacity style={profileStyles.menuItem}>
+          <View style={[profileStyles.menuIconBox, { backgroundColor: '#f1f5f9' }]}>
+            <HelpCircle color="#475569" size={20} />
+          </View>
+          <Text style={profileStyles.menuText}>Help & Support</Text>
+          <ChevronRight color="#9ca3af" size={20} />
+        </TouchableOpacity>
+
+        <TouchableOpacity style={[profileStyles.menuItem, { borderBottomWidth: 0 }]} onPress={logout}>
+          <View style={[profileStyles.menuIconBox, { backgroundColor: '#ffe4e6' }]}>
+            <LogOut color="#e11d48" size={20} />
+          </View>
+          <Text style={[profileStyles.menuText, { color: '#e11d48' }]}>Log Out</Text>
+        </TouchableOpacity>
+      </Card>
     </ScrollView>
   );
 };
 
 const profileStyles = StyleSheet.create({
   scroll: { paddingHorizontal: spacing.lg, paddingTop: spacing.md },
-  card: {
-    backgroundColor: '#fff', borderRadius: 20, padding: spacing.lg, marginBottom: spacing.md,
+  profileCard: {
+    backgroundColor: '#fff',
+    borderRadius: 24,
+    padding: spacing.xl,
+    alignItems: 'center',
+    marginBottom: spacing.lg,
+    marginTop: 40,
     ...Platform.select({
-      ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 8 },
+      ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.05, shadowRadius: 10 },
       android: { elevation: 3 },
     }),
   },
-  avatarContainer: { alignSelf: 'center', marginBottom: spacing.md, position: 'relative' },
-  avatarBg: {
-    width: 96, height: 96, borderRadius: 48,
-    backgroundColor: '#e6f4f0', justifyContent: 'center', alignItems: 'center',
-    borderWidth: 3, borderColor: '#fff',
+  avatarWrapper: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: '#006948',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: -70,
+    marginBottom: spacing.md,
+    borderWidth: 4,
+    borderColor: '#fff',
+  },
+  userName: { fontSize: 24, fontWeight: '800', color: '#121c28', marginBottom: 4 },
+  userTitle: { fontSize: 14, color: '#757575', fontWeight: '500', textAlign: 'center' },
+  impactCard: {
+    backgroundColor: '#006948',
+    borderRadius: 24,
+    padding: spacing.xl,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing.lg,
     ...Platform.select({
-      ios: { shadowColor: '#006948', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.15, shadowRadius: 8 },
-      android: { elevation: 4 },
+      ios: { shadowColor: '#006948', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.3, shadowRadius: 12 },
+      android: { elevation: 6 },
     }),
   },
-  avatarBadge: {
-    position: 'absolute', bottom: 4, right: 4,
-    width: 22, height: 22, borderRadius: 11,
-    backgroundColor: '#006948', borderWidth: 2, borderColor: '#fff',
-    justifyContent: 'center', alignItems: 'center',
+  impactInfo: { flex: 1 },
+  impactLabel: { color: 'rgba(255,255,255,0.8)', fontSize: 14, fontWeight: '500', marginBottom: spacing.xs },
+  impactValueRow: { flexDirection: 'row', alignItems: 'baseline' },
+  impactValue: { fontSize: 48, fontWeight: '800', color: '#fff' },
+  impactUnit: { fontSize: 20, fontWeight: '700', color: '#fff', marginLeft: 4 },
+  kgBadge: {
+    width: 60,
+    height: 60,
+    borderRadius: 16,
+    borderWidth: 2,
+    borderColor: 'rgba(255,255,255,0.3)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.1)',
   },
-  avatarBadgeDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#fff' },
-  profileName: { fontSize: 22, fontWeight: '800', color: '#0f172a', textAlign: 'center', marginBottom: 4 },
-  profileId: { fontSize: 13, color: '#64748b', textAlign: 'center', marginBottom: spacing.md },
-  rankBadge: {
-    flexDirection: 'row', alignItems: 'center', alignSelf: 'center',
-    backgroundColor: '#fff8ed', borderWidth: 1, borderColor: '#fed7aa',
-    paddingHorizontal: 14, paddingVertical: 5, borderRadius: 20, gap: 6, marginBottom: spacing.lg,
-  },
-  rankIcon: { fontSize: 14 },
-  rankText: { fontSize: 13, fontWeight: '700', color: '#92400e' },
-  statusRow: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    backgroundColor: '#f8fafc', borderRadius: 50,
-    paddingVertical: 10, paddingHorizontal: spacing.lg, gap: spacing.sm,
-  },
-  statusLabel: { fontSize: 14, fontWeight: '600', color: '#475569', marginRight: 2 },
-  statusText: { fontSize: 14, fontWeight: '700' },
+  kgBadgeText: { color: '#fff', fontSize: 18, fontWeight: '800' },
+  statsRow: { flexDirection: 'row', gap: spacing.lg, marginBottom: spacing.lg },
+  smallStatCard: { flex: 1, padding: spacing.lg, borderRadius: 24, backgroundColor: '#fff' },
+  statIcon: { marginBottom: spacing.md },
+  smallStatValue: { fontSize: 22, fontWeight: '800', color: '#121c28', marginBottom: 4 },
+  smallStatLabel: { fontSize: 12, fontWeight: '700', color: '#757575', letterSpacing: 1 },
+  vehicleCard: { backgroundColor: '#fff', borderRadius: 24, padding: spacing.lg, marginBottom: spacing.lg },
   sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: spacing.md },
   sectionIconBox: { width: 40, height: 40, borderRadius: 12, justifyContent: 'center', alignItems: 'center' },
   sectionTitle: { fontSize: 16, fontWeight: '700', color: '#0f172a' },
-  vehicleGrid: { flexDirection: 'row', gap: spacing.md, marginBottom: spacing.md },
-  vehicleCell: { flex: 1, backgroundColor: '#f8fafc', borderRadius: 12, padding: spacing.md },
-  vehicleCellLabel: { fontSize: 11, color: '#94a3b8', fontWeight: '600', marginBottom: 4 },
-  vehicleCellValue: { fontSize: 15, fontWeight: '700', color: '#0f172a' },
-  maintenanceRow: {
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    backgroundColor: '#f8fafc', borderRadius: 12, padding: spacing.md,
+  emptyVehicleText: { fontSize: 14, color: '#64748b', fontWeight: '600' },
+  menuCard: { backgroundColor: '#fff', borderRadius: 24, paddingHorizontal: spacing.lg },
+  menuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: spacing.lg,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f1f5f9',
   },
-  statsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md },
-  statCell: {
-    flex: 1, minWidth: '40%', backgroundColor: '#f8fafc',
-    borderRadius: 16, padding: spacing.md, alignItems: 'center', gap: 6,
+  menuIconBox: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: spacing.md,
   },
-  statValue: { fontSize: 22, fontWeight: '800', color: '#0f172a' },
-  statLabel: { fontSize: 12, color: '#64748b', fontWeight: '600', textAlign: 'center' },
+  menuText: { flex: 1, fontSize: 16, fontWeight: '600', color: '#121c28' },
 });
 
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 export const CollectorHomeScreen = () => {
   const { user, logout } = useAuthStore();
+  const { unreadCount, fetchNotifications } = useNotificationStore();
   const {
     requests,
     fetchPendingRequests,
@@ -392,6 +453,12 @@ export const CollectorHomeScreen = () => {
   const [tab, setTab] = useState<TabType>('available');
   const [refreshing, setRefreshing] = useState(false);
   const [history, setHistory] = useState<HistoryItem[]>([]);
+  const [driverStats, setDriverStats] = useState<DriverStats>({
+    completedJobs: 0,
+    totalWeightKg: 0,
+    completedEarnings: 0,
+    pendingEarnings: 0,
+  });
   const [historyPage, setHistoryPage] = useState(5);
   const [tspLoading, setTspLoading] = useState(false);
   const [optimizedRequests, setOptimizedRequests] = useState<any[]>([]);
@@ -406,6 +473,39 @@ export const CollectorHomeScreen = () => {
 
   const navigation = useNavigation<any>();
   const insets = useSafeAreaInsets();
+  const { width } = useWindowDimensions();
+
+  const notificationTestId =
+    tab === 'active'
+      ? 'route-notification-button'
+      : tab === 'profile'
+        ? 'profile-notification-button'
+        : tab === 'history'
+          ? 'history-notification-button'
+          : 'collector-notification-button';
+
+  const renderHeader = () => (
+    <View style={styles.header}>
+      <View style={styles.logoGroup}>
+        <View style={styles.logoPositioner}>
+          <Logo size={32} />
+        </View>
+        <Text style={[styles.logoText, { color: '#006948' }]}>EcoSort</Text>
+      </View>
+      <TouchableOpacity
+        testID={notificationTestId}
+        style={[styles.iconButton, { backgroundColor: '#fff' }]}
+        onPress={() => navigation.navigate('Notification')}
+      >
+        <Bell color="#006948" size={22} />
+        {unreadCount > 0 && (
+          <View style={styles.badgeContainer}>
+            <Text style={styles.badgeTextCount}>{unreadCount > 9 ? '9+' : unreadCount}</Text>
+          </View>
+        )}
+      </TouchableOpacity>
+    </View>
+  );
 
   // Reset TSP flag setiap kali tab berubah ke 'active'
   useEffect(() => {
@@ -417,6 +517,13 @@ export const CollectorHomeScreen = () => {
   useEffect(() => {
     loadData();
   }, [tab]);
+
+  useEffect(() => {
+    if (user) {
+      fetchNotifications?.(user.id);
+      fetchDriverStats();
+    }
+  }, [user?.id]);
 
   // ── TSP trigger: hanya jalan jika tab active, requests ada,
   //    belum pernah di-TSP untuk batch ini, dan tidak sedang berjalan
@@ -466,12 +573,55 @@ export const CollectorHomeScreen = () => {
     if (!error) setHistory((data as HistoryItem[]) || []);
   };
 
+  const fetchDriverStats = async () => {
+    if (!user) return;
+
+    const { data: completedPickups } = await (supabase
+      .from('pickup_requests') as any)
+      .select('id, waste_classifications(collector_weight_kg)')
+      .eq('collector_id', user.id)
+      .eq('status', 'COMPLETED')
+      .order('created_at', { ascending: false });
+
+    const pickups = (completedPickups || []) as any[];
+    const totalWeightKg = pickups.reduce((sum, pickup) => {
+      const pickupWeight = (pickup.waste_classifications || []).reduce(
+        (innerSum: number, row: any) => innerSum + (Number(row.collector_weight_kg) || 0),
+        0
+      );
+      return sum + pickupWeight;
+    }, 0);
+
+    const { data: transactions } = await (supabase
+      .from('transactions') as any)
+      .select('amount, status, type')
+      .eq('user_id', user.id)
+      .eq('type', 'CREDIT')
+      .order('created_at', { ascending: false });
+
+    const credits = (transactions || []) as any[];
+    const completedEarnings = credits
+      .filter((tx) => tx.status === 'COMPLETED')
+      .reduce((sum, tx) => sum + (Number(tx.amount) || 0), 0);
+    const pendingEarnings = credits
+      .filter((tx) => tx.status === 'PENDING')
+      .reduce((sum, tx) => sum + (Number(tx.amount) || 0), 0);
+
+    setDriverStats({
+      completedJobs: pickups.length,
+      totalWeightKg,
+      completedEarnings,
+      pendingEarnings,
+    });
+  };
+
   const onRefresh = async () => {
     // Reset TSP saat refresh agar bisa re-optimasi dengan data baru
     tspDoneRef.current = false;
     lastIdsRef.current = '';
     setRefreshing(true);
     await loadData();
+    await fetchDriverStats();
     setRefreshing(false);
   };
 
@@ -536,28 +686,37 @@ export const CollectorHomeScreen = () => {
   // ─── Requests Tab ──────────────────────────────────────────────────────────
   const renderRequestsTab = () => (
     <ScrollView
-      contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + 90 }]}
+      style={{ flex: 1 }}
+      contentContainerStyle={[
+        styles.scroll, 
+        { paddingBottom: Platform.OS === 'ios' ? insets.bottom + 100 : 120 }
+      ]}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       showsVerticalScrollIndicator={false}
     >
+      {renderHeader()}
       <Text style={styles.greeting}>
-        Hello, {user?.name?.split(' ')[0] || 'Driver'}! 👋
+        Hello, {user?.name?.split(' ')[0] || 'Driver'}!
       </Text>
 
-      {/* Today's Earnings */}
       <View style={styles.earningsCard}>
         <View style={styles.earningsHeader}>
           <View style={styles.earningsIconBox}>
             <Wallet color="rgba(255,255,255,0.85)" size={20} />
           </View>
-          <Text style={styles.earningsLabel}>Today's Earnings</Text>
+          <Text style={styles.earningsLabel}>AVAILABLE BALANCE</Text>
         </View>
-        <Text style={styles.earningsAmount}>
-          Rp {(user?.balance ?? 0).toLocaleString('id-ID')}
-        </Text>
+        <Text style={styles.earningsAmount}>{formatRupiah(user?.balance ?? 0)}</Text>
+        <View style={styles.walletActions}>
+          <TouchableOpacity
+            style={styles.walletActionBtn}
+            onPress={() => navigation.navigate('Withdrawal')}
+          >
+            <Text style={styles.walletActionText}>REDEEM</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
-      {/* Stats Row */}
       <View style={styles.statsRow}>
         <View style={styles.statBox}>
           <View style={[styles.statIconCircle, { backgroundColor: '#dbeafe' }]}>
@@ -565,7 +724,7 @@ export const CollectorHomeScreen = () => {
           </View>
           <Text style={styles.statBoxLabel}>FINISHED</Text>
           <View style={styles.statValueRow}>
-            <Text style={styles.statBoxValue}>24</Text>
+            <Text style={styles.statBoxValue}>{driverStats.completedJobs}</Text>
             <Text style={styles.statBoxUnit}> trips</Text>
           </View>
         </View>
@@ -575,7 +734,7 @@ export const CollectorHomeScreen = () => {
           </View>
           <Text style={styles.statBoxLabel}>COLLECTED</Text>
           <View style={styles.statValueRow}>
-            <Text style={styles.statBoxValue}>142</Text>
+            <Text style={styles.statBoxValue}>{driverStats.totalWeightKg.toFixed(0)}</Text>
             <Text style={styles.statBoxUnit}>kg</Text>
           </View>
         </View>
@@ -586,23 +745,19 @@ export const CollectorHomeScreen = () => {
         requests.map((item) => {
           const accentColor = getJobAccentColor(item.waste_hint ?? '');
           const typeLabel   = getJobTypeLabel(item.waste_hint ?? '');
-          const reward      = getEstimatedReward(item.waste_hint ?? '');
           return (
             <View key={item.id} style={styles.jobCard}>
               <View style={[styles.jobAccent, { backgroundColor: accentColor }]} />
               <View style={styles.jobInner}>
                 <View style={styles.jobTopRow}>
                   <Text style={styles.jobTypeText}>{typeLabel}</Text>
-                  <View style={styles.rewardBadge}>
-                    <Text style={styles.rewardBadgeText}>{reward}</Text>
-                  </View>
                 </View>
                 <View style={styles.jobDistanceRow}>
                   <MapPin color="#94a3b8" size={13} />
                   <Text style={styles.jobDistance}>
                     {new Date(item.created_at).toLocaleTimeString([], {
                       hour: '2-digit', minute: '2-digit',
-                    })} • Nearby
+                    })}
                   </Text>
                 </View>
                 <View style={styles.jobAddressRow}>
@@ -640,35 +795,36 @@ export const CollectorHomeScreen = () => {
     const displayList = optimizedRequests.length > 0 ? optimizedRequests : requests;
     const currentJob  = displayList[0];
     const totalJobs   = displayList.length;
-    const estEarnings = totalJobs * 15000;
 
     return (
       <ScrollView
-        contentContainerStyle={[styles.assignedScroll, { paddingBottom: insets.bottom + 90 }]}
+        style={{ flex: 1 }}
+        contentContainerStyle={[
+          styles.assignedScroll, 
+          { paddingBottom: Platform.OS === 'ios' ? insets.bottom + 100 : 120 }
+        ]}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
         showsVerticalScrollIndicator={false}
       >
+        <View style={{ paddingHorizontal: spacing.lg }}>
+          {renderHeader()}
+        </View>
+        
         {/* Stats Row */}
         <View style={styles.assignedStatsRow}>
           <View style={styles.assignedStatBox}>
-            <Text style={styles.assignedStatBoxTitle}>TODAY'S PICKUPS</Text>
+            <Text style={styles.assignedStatBoxTitle}>ACTIVE STOPS</Text>
             <View style={styles.assignedPickupCount}>
               <Text style={styles.assignedPickupValue}>{totalJobs}</Text>
-              <Text style={styles.assignedPickupTotal}> / 15</Text>
-            </View>
-            <View style={styles.progressBarBg}>
-              <View style={[styles.progressBarFill, {
-                width: `${Math.min((totalJobs / 15) * 100, 100)}%` as any,
-              }]} />
             </View>
           </View>
 
           <View style={styles.assignedStatBox}>
-            <Text style={styles.assignedStatBoxTitle}>EST. EARNINGS</Text>
+            <Text style={styles.assignedStatBoxTitle}>PENDING EARNINGS</Text>
             <View style={styles.estEarningsRow}>
               <Wallet color="#92400e" size={20} />
               <Text style={styles.estEarningsAmount}>
-                Rp{'\n'}{(estEarnings / 1000).toFixed(0)}k
+                {formatRupiah(driverStats.pendingEarnings)}
               </Text>
             </View>
           </View>
@@ -726,16 +882,41 @@ export const CollectorHomeScreen = () => {
                           latitude: item.location.lat,
                           longitude: item.location.lng,
                         }}
+                        anchor={{ x: 0.5, y: 0.5 }}
                         title={`#${idx + 1} ${getJobTypeLabel(item.waste_hint ?? '')}`}
                         description={item.location.address}
                       >
-                        <View style={[
-                          styles.mapMarker,
-                          { backgroundColor: isFirst ? '#006948' : accentHex },
-                          isFirst && styles.mapMarkerFirst,
-                        ]}>
-                          <Text style={styles.mapMarkerNumber}>{idx + 1}</Text>
-                          <Text style={styles.mapMarkerLabel}>{label}</Text>
+                        <View 
+                          style={{ 
+                            width: isFirst ? 60 : 48, 
+                            height: isFirst ? 60 : 48, 
+                            alignItems: 'center', 
+                            justifyContent: 'center', 
+                            backgroundColor: 'transparent' 
+                          }}
+                        >
+                          <View
+                            style={{
+                              width: isFirst ? 50 : 38,
+                              height: isFirst ? 50 : 38,
+                              borderRadius: isFirst ? 25 : 19,
+                              backgroundColor: isFirst ? '#006948' : accentHex,
+                              borderWidth: 3,
+                              borderColor: '#ffffff',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                            }}
+                          >
+                            <Text
+                              style={{
+                                color: '#ffffff',
+                                fontWeight: '900',
+                                fontSize: isFirst ? 20 : 16,
+                              }}
+                            >
+                              {idx + 1}
+                            </Text>
+                          </View>
                         </View>
                       </Marker>
                     );
@@ -750,13 +931,7 @@ export const CollectorHomeScreen = () => {
                 <View style={styles.assignedJobTop}>
                   <View style={styles.etaBadge}>
                     <Clock color="#0284c7" size={13} />
-                    <Text style={styles.etaText}>ETA: 12 mins</Text>
-                  </View>
-                  <View>
-                    <Text style={styles.estValueLabel}>EST. VALUE</Text>
-                    <Text style={styles.estValueAmount}>
-                      {getEstimatedReward(currentJob.waste_hint ?? '')}
-                    </Text>
+                    <Text style={styles.etaText}>Current stop</Text>
                   </View>
                 </View>
 
@@ -804,9 +979,6 @@ export const CollectorHomeScreen = () => {
                           {getJobTypeLabel(item.waste_hint ?? '')}
                         </Text>
                       </View>
-                      <Text style={styles.nextStopReward}>
-                        {getEstimatedReward(item.waste_hint ?? '')}
-                      </Text>
                       <ChevronRight color="#cbd5e1" size={18} />
                     </View>
                   </TouchableOpacity>
@@ -826,10 +998,15 @@ export const CollectorHomeScreen = () => {
 
     return (
       <ScrollView
-        contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + 90 }]}
+        style={{ flex: 1 }}
+        contentContainerStyle={[
+          styles.scroll, 
+          { paddingBottom: Platform.OS === 'ios' ? insets.bottom + 100 : 120 }
+        ]}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
         showsVerticalScrollIndicator={false}
       >
+        {renderHeader()}
         <Text style={styles.historyPageTitle}>History</Text>
         <Text style={styles.historyPageSubtitle}>
           Review your past sorting deposits and environmental impact.
@@ -909,39 +1086,32 @@ export const CollectorHomeScreen = () => {
 
   // ─── Render ────────────────────────────────────────────────────────────────
   const isProfile = tab === 'profile';
+  const screenBackground = isProfile ? '#EEF4FF' : '#f8f9ff';
 
   return (
-    <View style={[styles.container, isProfile && { backgroundColor: '#EEF2F8' }]}>
-      <StatusBar barStyle="dark-content" backgroundColor={isProfile ? '#EEF2F8' : '#fff'} />
+    <View style={styles.container}>
+      <StatusBar barStyle="light-content" backgroundColor="#006948" />
 
-      <SafeAreaView style={{ flex: 1 }} edges={['top', 'left', 'right']}>
-        <View style={[styles.header, isProfile && styles.headerProfile]}>
-          {isProfile ? (
-            <>
-              <Text style={styles.headerProfileTitle}>Profile</Text>
-              <TouchableOpacity onPress={logout} style={styles.logoutBtn}>
-                <LogOut color="#64748b" size={22} />
-              </TouchableOpacity>
-            </>
-          ) : (
-            <>
-              <View style={styles.headerLeft}>
-                <View style={styles.headerAvatar}>
-                  <UserCircle color="#006948" size={26} strokeWidth={1.5} />
-                </View>
-                <Text style={styles.headerBrand}>EcoSort</Text>
-              </View>
-              <TouchableOpacity onPress={logout} style={styles.logoutBtn}>
-                <LogOut color="#64748b" size={22} />
-              </TouchableOpacity>
-            </>
-          )}
+      {/* Decorative Background Element */}
+      <View style={[
+        styles.bgCircle, 
+        { 
+          backgroundColor: '#e0f2f1',
+          top: -width * 0.4,
+          left: -width * 0.2,
+          width: width * 1.5,
+          height: width * 1.5,
+          borderRadius: (width * 1.5) / 2,
+        }
+      ]} />
+
+      <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
+        <View style={[styles.content, { backgroundColor: screenBackground }]}>
+          {tab === 'available' && renderRequestsTab()}
+          {tab === 'active'    && renderActiveTab()}
+          {tab === 'history'   && renderHistoryTab()}
+          {tab === 'profile'   && <ProfileTab user={user} logout={logout} stats={driverStats} header={renderHeader()} />}
         </View>
-
-        {tab === 'available' && renderRequestsTab()}
-        {tab === 'active'    && renderActiveTab()}
-        {tab === 'history'   && renderHistoryTab()}
-        {tab === 'profile'   && <ProfileTab user={user} logout={logout} />}
       </SafeAreaView>
 
       <CollectorBottomNav activeTab={tab} onTabPress={setTab} />
@@ -951,23 +1121,75 @@ export const CollectorHomeScreen = () => {
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#EEF2F8' },
+  container: { flex: 1, backgroundColor: '#006948' },
+  safeArea: { flex: 1, backgroundColor: '#006948' },
+  content: { flex: 1 },
   header: {
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    paddingHorizontal: spacing.lg, paddingVertical: spacing.md,
-    backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#f1f5f9',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing.xl,
   },
-  headerProfile: { backgroundColor: '#EEF2F8', borderBottomColor: 'transparent' },
-  headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  headerAvatar: {
-    width: 36, height: 36, borderRadius: 18,
-    backgroundColor: '#e6f4f0', justifyContent: 'center', alignItems: 'center',
+  logoGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    position: 'relative',
+    paddingLeft: 12,
+    paddingTop: 8,
   },
-  headerBrand: { fontSize: 20, fontWeight: '800', color: '#006948' },
-  headerProfileTitle: { fontSize: 22, fontWeight: '700', color: '#006948' },
-  logoutBtn: {
-    width: 40, height: 40, borderRadius: 20,
-    backgroundColor: '#f1f5f9', justifyContent: 'center', alignItems: 'center',
+  logoPositioner: {
+    position: 'absolute',
+    top: -2,
+    left: -4,
+    zIndex: 10,
+    transform: [{ rotate: '-15deg' }],
+  },
+  logoText: {
+    fontSize: 26,
+    fontWeight: '800',
+    letterSpacing: -0.5,
+  },
+  iconButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    justifyContent: 'center',
+    alignItems: 'center',
+    position: 'relative',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 3,
+      },
+    }),
+  },
+  badgeContainer: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    backgroundColor: '#ff4444',
+    minWidth: 16,
+    height: 16,
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 4,
+    borderWidth: 1.5,
+    borderColor: '#fff',
+  },
+  badgeTextCount: {
+    color: '#fff',
+    fontSize: 9,
+    fontWeight: '800',
+  },
+  bgCircle: {
+    position: 'absolute',
+    opacity: 0.5,
   },
   scroll: { paddingHorizontal: spacing.lg, paddingTop: spacing.lg },
   assignedScroll: { paddingTop: spacing.lg },
@@ -986,6 +1208,18 @@ const styles = StyleSheet.create({
   },
   earningsLabel: { fontSize: 14, color: 'rgba(255,255,255,0.85)', fontWeight: '600' },
   earningsAmount: { fontSize: 36, fontWeight: '800', color: '#fff' },
+  walletActions: { flexDirection: 'row', gap: spacing.md, marginTop: spacing.lg },
+  walletActionBtn: {
+    flex: 1,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.25)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  walletActionText: { color: '#fff', fontSize: 12, fontWeight: '800', letterSpacing: 1 },
   statsRow: { flexDirection: 'row', gap: spacing.md, marginBottom: spacing.xl },
   statBox: {
     flex: 1, backgroundColor: '#fff', borderRadius: 16, padding: spacing.md, alignItems: 'center', gap: 6,
@@ -1060,39 +1294,52 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md, paddingVertical: 8,
   },
   tspBadgeText: { fontSize: 12, color: '#006948', fontWeight: '600', flex: 1 },
+  mapMarkerContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: 80,
+    height: 80,
+    backgroundColor: 'transparent',
+  },
   mapMarker: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 8,
-    paddingVertical: 5,
-    borderRadius: 12,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     borderWidth: 2,
     borderColor: '#fff',
-    minWidth: 44,
     ...Platform.select({
       ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.25, shadowRadius: 6 },
       android: { elevation: 6 },
     }),
   },
   mapMarkerFirst: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
     borderWidth: 3,
-    borderColor: '#fff',
-    ...Platform.select({
-      ios: { shadowColor: '#006948', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.5, shadowRadius: 8 },
-      android: { elevation: 8 },
-    }),
+  },
+  mapMarkerTip: {
+    width: 0,
+    height: 0,
+    backgroundColor: 'transparent',
+    borderStyle: 'solid',
+    borderLeftWidth: 8,
+    borderRightWidth: 8,
+    borderTopWidth: 12,
+    borderLeftColor: 'transparent',
+    borderRightColor: 'transparent',
+    marginTop: -2, // overlap with circle to avoid gap
   },
   mapMarkerNumber: {
-    fontSize: 13,
+    fontSize: 16,
     fontWeight: '800',
     color: '#fff',
-    lineHeight: 16,
+    textAlign: 'center',
   },
-  mapMarkerLabel: {
-    fontSize: 8,
-    fontWeight: '700',
-    color: 'rgba(255,255,255,0.85)',
-    letterSpacing: 0.5,
+  mapMarkerNumberFirst: {
+    fontSize: 22,
   },
   mapContainer: {
     height: 260, marginHorizontal: spacing.lg,

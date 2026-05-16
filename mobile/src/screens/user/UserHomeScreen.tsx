@@ -24,9 +24,6 @@ import { useNotificationStore } from '../../store/notificationStore';
 import { 
   Bell, 
   History, 
-  TrendingUp,
-  TrendingDown,
-  Minus,
   Coffee, 
   Recycle, 
   CheckCircle2, 
@@ -81,61 +78,10 @@ export const UserHomeScreen = () => {
 
   // Dynamic calculations
   const balance = user?.balance || 0;
-  const pendingTransactions = transactions.filter(tx => tx.status === 'PENDING');
-  const pendingBalance = pendingTransactions.reduce((acc, tx) => acc + tx.amount, 0);
-  const target = 50000;
-  const progressPercent = Math.min((balance / target) * 100, 100);
-
-  // Daily Task: Completed plastic pickups today
-  const today = new Date().toDateString();
-  const completedPlasticsToday = requests.filter(req => 
-    req.status === 'COMPLETED' && 
-    new Date(req.created_at).toDateString() === today && 
-    req.waste_hint?.toLowerCase().includes('plastic')
-  ).length;
-  
-  // Count how many plastics were collected in COMPLETED requests overall for the "3 Plastics" task
-  const completedPlasticsTotal = requests.filter(req => 
-    req.status === 'COMPLETED' && 
-    req.waste_hint?.toLowerCase().includes('plastic')
-  ).length;
-  const plasticsCount = Math.min(completedPlasticsTotal, 3);
-
-  // Dynamic Trend: Sum of CREDIT transactions in the last 7 days
-  const oneWeekAgo = new Date();
-  oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
-  const weeklyTrend = transactions
-    .filter(tx => tx.type === 'CREDIT' && tx.status === 'COMPLETED' && new Date(tx.created_at) >= oneWeekAgo)
-    .reduce((acc, tx) => acc + tx.amount, 0); 
-
-  const renderTrend = () => {
-    if (weeklyTrend > 0) {
-      return (
-        <>
-          <TrendingUp color="#fff" size={16} />
-          <Text style={styles.trendText}>+Rp {weeklyTrend.toLocaleString()} this week</Text>
-        </>
-      );
-    } else if (weeklyTrend < 0) {
-      return (
-        <>
-          <TrendingDown color="#fff" size={16} />
-          <Text style={styles.trendText}>-Rp {Math.abs(weeklyTrend).toLocaleString()} this week</Text>
-        </>
-      );
-    } else {
-      return (
-        <>
-          <Minus color="#fff" size={16} opacity={0.6} />
-          <Text style={styles.trendText}>No change this week</Text>
-        </>
-      );
-    }
-  };
 
   return (
     <View style={[styles.container, { backgroundColor: '#f8f9ff' }]}>
-      <StatusBar barStyle="dark-content" backgroundColor="#f8f9ff" translucent={true} />
+      <StatusBar barStyle="light-content" backgroundColor="#006948" />
       
       {/* Decorative Background Element */}
       <View style={[
@@ -220,103 +166,26 @@ export const UserHomeScreen = () => {
             </View>
           )}
 
-          {/* Wallet Card */}
+          {/* Wallet Card - Consistent with Driver UI */}
           <View style={[styles.walletCard, { backgroundColor: '#006948' }]}>
             <View style={styles.walletHeader}>
+              <View style={styles.earningsIconBox}>
+                <Wallet color="rgba(255,255,255,0.85)" size={20} />
+              </View>
               <Text style={styles.walletLabel}>AVAILABLE BALANCE</Text>
-              <TouchableOpacity style={styles.historyBtn}>
-                <History color="#fff" size={18} opacity={0.8} />
-              </TouchableOpacity>
             </View>
             
-            <Text style={styles.balanceText}>Rp {balance.toLocaleString()}</Text>
+            <Text style={styles.balanceText}>Rp {balance.toLocaleString('id-ID')}</Text>
             
-            <View style={styles.trendContainer}>
-              {renderTrend()}
-            </View>
-
             <View style={styles.walletActions}>
               <TouchableOpacity 
-                style={[styles.pillBtn, styles.btnFill]}
+                style={styles.pillBtn}
                 onPress={() => navigation.navigate('Withdrawal')}
               >
                 <Text style={[styles.pillBtnText, { color: '#006948' }]}>REDEEM</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={[styles.pillBtn, styles.btnOutline]}>
-                <Text style={[styles.pillBtnText, { color: '#fff' }]}>TRANSFER</Text>
-              </TouchableOpacity>
             </View>
           </View>
-
-          {/* Journey Section */}
-          <View style={styles.section}>
-            <Text style={[styles.sectionTitle, { color: '#121c28' }]}>Your Journey</Text>
-            
-            <TouchableOpacity 
-              activeOpacity={0.7}
-              onPress={() => {
-                if (balance >= 50000) {
-                  Alert.alert('Congratulations! 🎉', 'You have earned a Free Coffee voucher! Use code: ECOSORT-COFFEE-2026');
-                } else {
-                  Alert.alert('Keep Going!', `You need Rp ${(50000 - balance).toLocaleString()} more for a free coffee.`);
-                }
-              }}
-            >
-              <Card style={styles.journeyCard}>
-                <View style={styles.journeyMain}>
-                  <View style={[styles.journeyIconBox, { backgroundColor: '#e3f2fd' }]}>
-                    <Coffee color="#2196f3" size={24} />
-                  </View>
-                  <View style={styles.journeyInfo}>
-                    <Text style={styles.journeyTitle}>Free Coffee</Text>
-                    <Text style={styles.journeySubtitle}>Starbucks Voucher</Text>
-                  </View>
-                  <Text style={[styles.journeyTarget, { color: '#006948' }]}>50k</Text>
-                </View>
-                
-                <View style={styles.progressSection}>
-                  <View style={styles.progressLabels}>
-                    <Text style={styles.progressLabel}>Progress</Text>
-                    <Text style={styles.progressValue}>{balance >= 1000 ? `${(balance / 1000).toFixed(0)}k` : balance} / 50k</Text>
-                  </View>
-                  <View style={styles.progressBarBg}>
-                    <View style={[styles.progressBarFill, { backgroundColor: '#006948', width: `${progressPercent}%` }]} />
-                  </View>
-                </View>
-              </Card>
-            </TouchableOpacity>
-          </View>
-
-          {/* Daily Task Section */}
-          <TouchableOpacity 
-            activeOpacity={0.7}
-            onPress={() => navigation.navigate('Scan')}
-          >
-            <Card style={styles.taskCard}>
-              <View style={styles.taskHeader}>
-                <View style={[styles.badge, { backgroundColor: '#fff3e0' }]}>
-                  <Text style={styles.badgeText}>Daily</Text>
-                </View>
-                <Recycle color="#9e9e9e" size={20} />
-              </View>
-              
-              <Text style={styles.taskTitle}>Recycle 3 Plastics</Text>
-              <Text style={styles.taskDesc}>Drop off 3 plastic bottles at any smart bin to complete.</Text>
-              
-              <View style={styles.taskFooter}>
-                <View style={styles.taskProgressIcons}>
-                  {[1, 2, 3].map((num) => (
-                    plasticsCount >= num ? (
-                      <CheckCircle2 key={num} color="#006948" size={24} />
-                    ) : (
-                      <Droplets key={num} color="#cfd8dc" size={24} />
-                    )
-                  ))}
-                </View>
-                <Text style={[styles.rewardText, { color: '#00668a' }]}>+Rp 500</Text>
-              </View>
-            </Card>
-          </TouchableOpacity>
 
           {/* Quick Guides Section */}
           <View style={styles.section}>
@@ -390,8 +259,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     position: 'relative',
-    paddingLeft: 12, // Give the text some space from the left edge to allow the absolute logo to stick out
-    paddingTop: 8,   // Give space for the logo overlapping the top
+    paddingLeft: 12,
+    paddingTop: 8,
   },
   logoPositioner: {
     position: 'absolute',
@@ -401,7 +270,7 @@ const styles = StyleSheet.create({
     transform: [{ rotate: '-15deg' }],
   },
   logoText: {
-    fontSize: 26, // Slightly larger to emphasize the brand
+    fontSize: 26,
     fontWeight: '800',
     letterSpacing: -0.5,
   },
@@ -469,23 +338,23 @@ const styles = StyleSheet.create({
   },
   walletHeader: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: spacing.sm,
+    gap: 10,
+    marginBottom: spacing.md,
+  },
+  earningsIconBox: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   walletLabel: {
     color: 'rgba(255, 255, 255, 0.8)',
-    fontSize: 12,
+    fontSize: 14,
     fontWeight: '700',
     letterSpacing: 1,
-  },
-  historyBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    justifyContent: 'center',
-    alignItems: 'center',
   },
   balanceText: {
     color: '#fff',
@@ -493,36 +362,10 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     marginBottom: spacing.xs,
   },
-  pendingBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginBottom: spacing.sm,
-    backgroundColor: 'rgba(255, 255, 255, 0.15)',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-    alignSelf: 'flex-start',
-  },
-  pendingText: {
-    color: '#fff',
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  trendContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    marginBottom: spacing.xl,
-  },
-  trendText: {
-    color: 'rgba(255, 255, 255, 0.9)',
-    fontSize: 14,
-    fontWeight: '500',
-  },
   walletActions: {
     flexDirection: 'row',
     gap: spacing.md,
+    marginTop: spacing.lg,
   },
   pillBtn: {
     flex: 1,
@@ -530,13 +373,7 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  btnFill: {
     backgroundColor: '#fff',
-  },
-  btnOutline: {
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.5)',
   },
   pillBtnText: {
     fontSize: 14,
@@ -599,144 +436,10 @@ const styles = StyleSheet.create({
     color: '#006948',
     letterSpacing: 1,
   },
-  pendingCard: {
-    width: 200,
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: spacing.md,
-    borderRadius: 16,
-    marginRight: spacing.md,
-  },
-  pendingIconBox: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: spacing.md,
-  },
-  pendingInfo: {
-    flex: 1,
-  },
-  pendingAmount: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: '#006948',
-  },
-  pendingStatus: {
-    fontSize: 11,
-    color: '#757575',
-    fontWeight: '500',
-  },
-  journeyCard: {
-    padding: spacing.lg,
-    borderRadius: 20,
-  },
-  journeyMain: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: spacing.lg,
-  },
-  journeyIconBox: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: spacing.md,
-  },
-  journeyInfo: {
-    flex: 1,
-  },
-  journeyTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  journeySubtitle: {
-    fontSize: 13,
-    color: '#757575',
-  },
-  journeyTarget: {
-    fontSize: 20,
-    fontWeight: '800',
-  },
-  progressSection: {
-    marginTop: spacing.xs,
-  },
-  progressLabels: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 8,
-  },
-  progressLabel: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#9e9e9e',
-  },
-  progressValue: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#616161',
-  },
-  progressBarBg: {
-    height: 10,
-    backgroundColor: '#f1f8e9',
-    borderRadius: 5,
-    overflow: 'hidden',
-  },
-  progressBarFill: {
-    height: '100%',
-    borderRadius: 5,
-  },
-  taskCard: {
-    padding: spacing.lg,
-    borderRadius: 20,
-    marginBottom: spacing.xl,
-  },
-  taskHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: spacing.sm,
-  },
-  badge: {
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  badgeText: {
-    fontSize: 11,
-    fontWeight: '800',
-    color: '#e65100',
-  },
-  taskTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    marginBottom: 4,
-  },
-  taskDesc: {
-    fontSize: 14,
-    color: '#757575',
-    lineHeight: 20,
-    marginBottom: spacing.lg,
-  },
-  taskFooter: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  taskProgressIcons: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  rewardText: {
-    fontSize: 18,
-    fontWeight: '800',
-  },
   guideScroll: {
     marginHorizontal: -spacing.lg,
     paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.sm, // Add vertical padding for shadows
+    paddingVertical: spacing.sm,
   },
   guideCard: {
     width: 160,
