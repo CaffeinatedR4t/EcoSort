@@ -18,9 +18,16 @@ import { WithdrawalScreen } from '../screens/user/WithdrawalScreen';
 import { NotificationScreen } from '../screens/user/NotificationScreen';
 import { PrivacyScreen } from '../screens/user/PrivacyScreen';
 import { AddYourHomeScreen } from '../screens/user/AddYourHomeScreen';
+import { AccountSettingsScreen } from '../screens/user/Accountsettingsscreen';
+import { HelpSupportScreen } from '../screens/user/Helpsupportscreen';
 import { CollectorHomeScreen } from '../screens/collector/CollectorHomeScreen';
 import { CollectorJobDetailScreen } from '../screens/collector/CollectorJobDetailScreen';
+import { AccountSettingsScreen as AccountSettingScreenCollector } from '../screens/collector/AccountSettingsScreenCollector';
+import { HelpSupportScreen as HelpSupportScreenCollector} from '../screens/collector/HelpSupportScreenCollector';
 import { AdminHomeScreen } from '../screens/admin/AdminHomeScreen';
+import { AdminSettingsScreen } from '../screens/admin/Adminsettingsscreen';
+import { AdminAccountSettingsScreen as Adminaccountsettingscreen } from '../screens/admin/Adminaccountsettingsscreen';
+import { AdminHelpSupportScreen } from '../screens/admin/Adminhelpsupportscreen';
 
 const Stack = createNativeStackNavigator();
 const AuthStack = createNativeStackNavigator();
@@ -54,6 +61,8 @@ const UserNavigator = () => (
     <UserStack.Screen name="Notification" component={NotificationScreen} />
     <UserStack.Screen name="Privacy" component={PrivacyScreen} />
     <UserStack.Screen name="AddYourHome" component={AddYourHomeScreen} />
+    <UserStack.Screen name="AccountSettings" component={AccountSettingsScreen} />
+    <UserStack.Screen name="HelpSupport" component={HelpSupportScreen} />
   </UserStack.Navigator>
 );
 
@@ -63,6 +72,8 @@ const CollectorNavigator = () => (
     <CollectorStack.Screen name="CollectorJobDetail" component={CollectorJobDetailScreen} />
     <CollectorStack.Screen name="Withdrawal" component={WithdrawalScreen} />
     <CollectorStack.Screen name="Notification" component={NotificationScreen} />
+    <CollectorStack.Screen name="AccountSettings" component={AccountSettingsScreen} />
+    <CollectorStack.Screen name="HelpSupport" component={HelpSupportScreen} />
   </CollectorStack.Navigator>
 );
 
@@ -70,6 +81,9 @@ const AdminNavigator = () => (
   <AdminStack.Navigator screenOptions={{ headerShown: false }}>
     <AdminStack.Screen name="AdminHome" component={AdminHomeScreen} />
     <AdminStack.Screen name="Notification" component={NotificationScreen} />
+    <AdminStack.Screen name="AdminSettings" component={AdminSettingsScreen} />
+    <AdminStack.Screen name="AdminAccountSettings" component={Adminaccountsettingscreen} />
+    <AdminStack.Screen name="AdminHelpSupport" component={AdminHelpSupportScreen} />
   </AdminStack.Navigator>
 );
 

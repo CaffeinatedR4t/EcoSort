@@ -260,11 +260,13 @@ const ProfileTab = ({
   logout,
   stats,
   header,
+  navigation, // <--- 1. Tambahkan navigation di sini
 }: {
   user: any;
   logout: () => void;
   stats: DriverStats;
   header?: React.ReactNode;
+  navigation: any; // <--- 2. Definisikan tipe datanya
 }) => {
   const insets = useSafeAreaInsets();
 
@@ -324,7 +326,11 @@ const ProfileTab = ({
       </Card>
 
       <Card style={profileStyles.menuCard}>
-        <TouchableOpacity style={profileStyles.menuItem}>
+        {/* Tambahkan onPress di bawah ini */}
+        <TouchableOpacity 
+          style={profileStyles.menuItem}
+          onPress={() => navigation.navigate('AccountSettings')}
+        >
           <View style={[profileStyles.menuIconBox, { backgroundColor: '#e0f2fe' }]}>
             <UserCircle color="#0284c7" size={20} />
           </View>
@@ -332,7 +338,11 @@ const ProfileTab = ({
           <ChevronRight color="#9ca3af" size={20} />
         </TouchableOpacity>
 
-        <TouchableOpacity style={profileStyles.menuItem}>
+        {/* Tambahkan onPress di bawah ini */}
+        <TouchableOpacity 
+          style={profileStyles.menuItem}
+          onPress={() => navigation.navigate('HelpSupport')}
+        >
           <View style={[profileStyles.menuIconBox, { backgroundColor: '#f1f5f9' }]}>
             <HelpCircle color="#475569" size={20} />
           </View>
@@ -1110,7 +1120,15 @@ export const CollectorHomeScreen = () => {
           {tab === 'available' && renderRequestsTab()}
           {tab === 'active'    && renderActiveTab()}
           {tab === 'history'   && renderHistoryTab()}
-          {tab === 'profile'   && <ProfileTab user={user} logout={logout} stats={driverStats} header={renderHeader()} />}
+          {tab === 'profile'   && (
+             <ProfileTab 
+               user={user} 
+               logout={logout} 
+               stats={driverStats} 
+               header={renderHeader()} 
+               navigation={navigation} /* <--- 3. Masukkan navigation di sini */
+             />
+          )}
         </View>
       </SafeAreaView>
 

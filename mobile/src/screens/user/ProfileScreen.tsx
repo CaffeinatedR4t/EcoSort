@@ -146,7 +146,11 @@ export const ProfileScreen = () => {
 
           {/* Menu List */}
           <Card style={styles.menuCard}>
-            <TouchableOpacity style={styles.menuItem}>
+            {/* Navigasi Account Settings */}
+            <TouchableOpacity 
+              style={styles.menuItem} 
+              onPress={() => navigation.navigate('AccountSettings')}
+            >
               <View style={[styles.menuIconBox, {backgroundColor: '#e0f2fe'}]}>
                 <UserCircle color="#0284c7" size={20} />
               </View>
@@ -154,7 +158,11 @@ export const ProfileScreen = () => {
               <ChevronRight color="#9ca3af" size={20} />
             </TouchableOpacity>
             
-            <TouchableOpacity style={styles.menuItem}>
+            {/* Navigasi Help & Support */}
+            <TouchableOpacity 
+              style={styles.menuItem} 
+              onPress={() => navigation.navigate('HelpSupport')}
+            >
               <View style={[styles.menuIconBox, {backgroundColor: '#f1f5f9'}]}>
                 <HelpCircle color="#475569" size={20} />
               </View>
@@ -388,4 +396,3 @@ const styles = StyleSheet.create({
     color: '#121c28',
   },
 });
-

@@ -20,6 +20,7 @@ import { BottomNav } from '../../components/BottomNav';
 import { Logo } from '../../components/Logo';
 import { useAuthStore } from '../../store/authStore';
 import { usePickupStore } from '../../store/pickupStore';
+import { Wallet } from 'lucide-react-native';
 import { useNotificationStore } from '../../store/notificationStore';
 import { 
   Bell, 

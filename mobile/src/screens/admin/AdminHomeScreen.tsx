@@ -17,6 +17,7 @@ import { Logo } from '../../components/Logo';
 import { spacing } from '../../services/theme/spacing';
 import { useAdminStore } from '../../store/adminStore';
 import { useAuthStore } from '../../store/authStore';
+import { useNavigation } from '@react-navigation/native';
 import {
   BarChart3,
   CheckCircle,
@@ -198,6 +199,7 @@ const AdminProfileAction = ({
 
 export const AdminHomeScreen = () => {
   const { user, logout } = useAuthStore();
+  const navigation = useNavigation<any>();
   const {
     overviewMetrics,
     adminProfileMetrics,
@@ -502,6 +504,7 @@ export const AdminHomeScreen = () => {
           Icon={Settings}
           iconColor="#00668a"
           iconBackground="#e0f2fe"
+           onPress={() => navigation.navigate('AdminSettings')}
         />
         <AdminProfileAction
           label="Account Settings"
@@ -509,6 +512,7 @@ export const AdminHomeScreen = () => {
           Icon={UserCircle}
           iconColor="#006948"
           iconBackground="#e6f4f0"
+          onPress={() => navigation.navigate('AdminAccountSettings')}
         />
         <AdminProfileAction
           label="Help & Support"
@@ -516,6 +520,7 @@ export const AdminHomeScreen = () => {
           Icon={HelpCircle}
           iconColor="#475569"
           iconBackground="#f1f5f9"
+          onPress={() => navigation.navigate('AdminHelpSupport')}
         />
       </View>
 
