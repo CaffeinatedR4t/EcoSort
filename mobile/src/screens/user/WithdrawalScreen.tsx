@@ -81,9 +81,10 @@ export const WithdrawalScreen = () => {
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: '#f2f0eb' }]}>
-      <StatusBar barStyle="dark-content" backgroundColor="#f2f0eb" />
-      <SafeAreaView style={{ flex: 1 }}>
+    <View style={[styles.container, { backgroundColor: '#006948' }]}>
+      <StatusBar barStyle="light-content" backgroundColor="#006948" />
+      <SafeAreaView style={{ flex: 1, backgroundColor: '#006948' }}>
+        <View style={styles.contentShell}>
         <KeyboardAvoidingView 
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           style={{ flex: 1 }}
@@ -203,6 +204,7 @@ export const WithdrawalScreen = () => {
             />
           </ScrollView>
         </KeyboardAvoidingView>
+        </View>
       </SafeAreaView>
     </View>
   );
@@ -211,6 +213,10 @@ export const WithdrawalScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  contentShell: {
+    flex: 1,
+    backgroundColor: '#ffffff',
   },
   header: {
     flexDirection: 'row',
@@ -325,7 +331,7 @@ const styles = StyleSheet.create({
   inputIcon: {
     width: 40,
     height: 40,
-    borderRadius: 20,
+    borderRadius: 12,
     backgroundColor: '#f1f8e9',
     justifyContent: 'center',
     alignItems: 'center',

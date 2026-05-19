@@ -32,7 +32,7 @@ describe('App safe area backgrounds', () => {
     expect(source).toContain('styles.safeArea');
     expect(source).toContain('styles.content');
     expect(source).toContain("backgroundColor: '#006948'");
-    expect(source).toContain("backgroundColor: '#f8fafc'");
+    expect(source).toContain("backgroundColor: '#ffffff'");
   });
 
   it('keeps the driver top safe area green while driver content uses screen backgrounds', () => {
@@ -41,7 +41,7 @@ describe('App safe area backgrounds', () => {
     expect(source).toContain('styles.safeArea');
     expect(source).toContain('styles.content');
     expect(source).toContain("backgroundColor: '#006948'");
-    expect(source).toContain('backgroundColor: screenBackground');
+    expect(source).toContain("backgroundColor: '#ffffff'");
     expect(source).toContain('backgroundColor="#006948"');
   });
 });

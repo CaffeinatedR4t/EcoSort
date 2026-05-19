@@ -59,4 +59,28 @@ describe('ProfileScreen', () => {
       expect(mockNavigate).toHaveBeenCalledWith('Notification');
     });
   });
+
+  it('shows initials fallback when the user has no profile picture', () => {
+    const { getByTestId } = render(<ProfileScreen />);
+
+    expect(getByTestId('profile-avatar-initials').props.children).toBe('TU');
+  });
+
+  it('shows saved profile picture when avatar_url exists', () => {
+    (useAuthStore as any).mockReturnValue({
+      user: {
+        id: 'user-1',
+        name: 'Test User',
+        balance: 1000,
+        role: 'user',
+        avatar_url: 'https://example.com/avatar.jpg',
+      },
+      logout: jest.fn(),
+    });
+
+    const { getByTestId, queryByTestId } = render(<ProfileScreen />);
+
+    expect(getByTestId('profile-avatar-image').props.source.uri).toBe('https://example.com/avatar.jpg');
+    expect(queryByTestId('profile-avatar-initials')).toBeNull();
+  });
 });

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -11,7 +11,7 @@ import {
   Platform,
   StatusBar,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import {
   ChevronLeft,
@@ -24,26 +24,31 @@ import {
   Tag,
   Lock,
   ShieldCheck,
-  Moon,
   Trash2,
-  UserCircle,
   Check,
+  Pencil,
 } from 'lucide-react-native';
 import { useAuthStore } from '../../store/authStore';
+import { useNotificationPreferenceStore } from '../../store/notificationPreferenceStore';
 import { spacing } from '../../services/theme/spacing';
-import { useThemeColors } from '../../hooks/useThemeColors';
+import { ProfileAvatar } from '../../components/ProfileAvatar';
+import { DeleteAccountModal } from '../../components/DeleteAccountModal';
+import { pickAndUploadProfileAvatar } from '../../utils/profile';
 
 // ─── Toggle Component ─────────────────────────────────────────────────────────
 const Toggle = ({
   value,
   onValueChange,
+  disabled,
 }: {
   value: boolean;
   onValueChange: (v: boolean) => void;
+  disabled?: boolean;
 }) => (
   <Switch
     value={value}
     onValueChange={onValueChange}
+    disabled={disabled}
     trackColor={{ false: '#cbd5e1', true: '#006948' }}
     thumbColor={Platform.OS === 'android' ? '#ffffff' : undefined}
     ios_backgroundColor="#cbd5e1"
@@ -118,52 +123,114 @@ const MenuCard = ({ children }: { children: React.ReactNode }) => (
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 export const AccountSettingsScreen = () => {
   const navigation = useNavigation<any>();
-  const { user } = useAuthStore();
-  const colors = useThemeColors();
+  const insets = useSafeAreaInsets();
+  const { user, session, updateProfile, deleteAccount } = useAuthStore();
+  const {
+    preferencesByUser,
+    loading: loadingPreferences,
+    saving: savingPreferences,
+    fetchPreferences,
+    updatePreference,
+  } = useNotificationPreferenceStore();
 
-  const [notifPickup, setNotifPickup] = useState(true);
-  const [notifReward, setNotifReward] = useState(true);
-  const [notifPromo, setNotifPromo] = useState(false);
-  const [darkMode, setDarkMode] = useState(false);
   const [editingName, setEditingName] = useState(false);
+  const [editingPhone, setEditingPhone] = useState(false);
   const [tempName, setTempName] = useState(user?.name || '');
+  const [tempPhone, setTempPhone] = useState(user?.phone_number || '');
   const [savedName, setSavedName] = useState(user?.name || '');
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [savingProfile, setSavingProfile] = useState(false);
+  const [deleteModalVisible, setDeleteModalVisible] = useState(false);
+  const [deletingAccount, setDeletingAccount] = useState(false);
+  const homeAddress = user?.home_address || 'Set your home address';
+  const accountEmail = session?.user?.email || user?.email || 'No email available';
+  const notificationPreferences = user ? preferencesByUser[user.id] : undefined;
+  const togglesDisabled = loadingPreferences || savingPreferences || !user;
 
-  const initials = savedName
-    .split(' ')
-    .map((w) => w[0])
-    .join('')
-    .slice(0, 2)
-    .toUpperCase();
+  useEffect(() => {
+    if (user?.id) {
+      fetchPreferences(user.id).catch((error) => {
+        Alert.alert('Notifications unavailable', error?.message || 'Unable to load notification settings.');
+      });
+    }
+  }, [fetchPreferences, user?.id]);
 
-  const handleSaveName = () => {
-    if (!tempName.trim()) return;
-    setSavedName(tempName.trim());
+  const handleTogglePreference = async (
+    key: 'pickup_enabled' | 'reward_enabled' | 'promo_enabled' | 'system_enabled',
+    value: boolean
+  ) => {
+    if (!user) return;
+    const result = await updatePreference(user.id, key, value);
+    if (!result.success) {
+      Alert.alert('Save failed', result.error || 'Unable to update notification settings.');
+    }
+  };
+
+  const handleSaveName = async () => {
+    const nextName = tempName.trim();
+    if (!nextName) return;
+
+    setSavingProfile(true);
+    const result = await updateProfile({
+      name: nextName,
+    });
+    setSavingProfile(false);
+    if (!result.success) {
+      Alert.alert('Save failed', result.error || 'Unable to update your profile.');
+      return;
+    }
+
+    setSavedName(nextName);
     setEditingName(false);
     setSaveSuccess(true);
     setTimeout(() => setSaveSuccess(false), 2500);
   };
 
-  const handleDeleteAccount = () => {
-    Alert.alert(
-      'Delete Account',
-      'This action is permanent and cannot be undone. All your data, balance, and history will be removed.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: () => Alert.alert('Account deletion request submitted.'),
-        },
-      ]
-    );
+  const handleSavePhone = async () => {
+    setSavingProfile(true);
+    const result = await updateProfile({
+      phone_number: tempPhone.trim() || null,
+    });
+    setSavingProfile(false);
+    if (!result.success) {
+      Alert.alert('Save failed', result.error || 'Unable to update your phone number.');
+      return;
+    }
+
+    setEditingPhone(false);
+    setSaveSuccess(true);
+    setTimeout(() => setSaveSuccess(false), 2500);
+  };
+
+  const handlePickAvatar = async () => {
+    if (!user) return;
+    const avatarUrl = await pickAndUploadProfileAvatar(user.id);
+    if (!avatarUrl) return;
+
+    const result = await updateProfile({ avatar_url: avatarUrl });
+    if (!result.success) {
+      Alert.alert('Save failed', result.error || 'Unable to update your profile picture.');
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    setDeletingAccount(true);
+    const result = await deleteAccount();
+    setDeletingAccount(false);
+
+    if (!result.success) {
+      Alert.alert('Delete failed', result.error || 'Unable to delete your account.');
+      return;
+    }
+
+    setDeleteModalVisible(false);
   };
 
   return (
-    <View style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#ffffff" />
-      <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
+    <View style={[styles.container, { backgroundColor: '#006948' }]}>
+      <StatusBar barStyle="light-content" backgroundColor="#006948" />
+      <SafeAreaView style={{ flex: 1, backgroundColor: '#006948' }} edges={['top', 'left', 'right']}>
+        <View style={{ flex: 1, backgroundColor: '#ffffff' }}>
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity
@@ -186,14 +253,23 @@ export const AccountSettingsScreen = () => {
 
         <ScrollView
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.scroll}
+          contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + 40 }]}
         >
           {/* Profile Card */}
           <View style={styles.profileCard}>
             <View style={styles.avatarRow}>
-              <View style={styles.avatar}>
-                <Text style={styles.avatarText}>{initials}</Text>
-              </View>
+              <TouchableOpacity
+                onPress={handlePickAvatar}
+                activeOpacity={0.75}
+                style={styles.avatarButton}
+                accessibilityRole="button"
+                accessibilityLabel="Edit profile picture"
+              >
+                <ProfileAvatar name={savedName} avatarUrl={user?.avatar_url} size={60} fallback="U" />
+                <View style={styles.avatarEditBadge}>
+                  <Pencil color="#ffffff" size={12} />
+                </View>
+              </TouchableOpacity>
               <View style={styles.avatarInfo}>
                 <Text style={styles.avatarName}>{savedName}</Text>
                 <Text style={styles.avatarRole}>Eco Member</Text>
@@ -230,8 +306,9 @@ export const AccountSettingsScreen = () => {
                   <TouchableOpacity
                     style={styles.saveBtn}
                     onPress={handleSaveName}
+                    disabled={savingProfile}
                   >
-                    <Text style={styles.saveBtnText}>Save</Text>
+                    <Text style={styles.saveBtnText}>{savingProfile ? 'Saving...' : 'Save'}</Text>
                   </TouchableOpacity>
                 </View>
               </View>
@@ -242,25 +319,49 @@ export const AccountSettingsScreen = () => {
           <SectionHeader title="Contact Info" />
           <MenuCard>
             <MenuItem
-              iconBg="#e0f2fe"
-              icon={<Mail color="#0284c7" size={18} />}
+              iconBg="#e6f4f0"
+              icon={<Mail color="#006948" size={18} />}
               label="Email Address"
-              sublabel={user?.email || 'budi.santoso@email.com'}
-              onPress={() => {}}
+              sublabel={accountEmail}
             />
             <MenuItem
-              iconBg="#fef3c7"
-              icon={<Phone color="#b45309" size={18} />}
+              iconBg="#e6f4f0"
+              icon={<Phone color="#006948" size={18} />}
               label="Phone Number"
-              sublabel="+62 812 3456 7890"
-              onPress={() => {}}
+              sublabel={user?.phone_number || 'Add phone number'}
+              onPress={() => {
+                setTempPhone(user?.phone_number || '');
+                setEditingPhone(true);
+              }}
             />
+            {editingPhone && (
+              <View style={styles.inlineEditBox}>
+                <Text style={styles.fieldLabel}>PHONE NUMBER</Text>
+                <TextInput
+                  value={tempPhone}
+                  onChangeText={setTempPhone}
+                  style={styles.nameInput}
+                  keyboardType="phone-pad"
+                  autoFocus
+                  returnKeyType="done"
+                  onSubmitEditing={handleSavePhone}
+                />
+                <View style={styles.editActions}>
+                  <TouchableOpacity style={styles.cancelBtn} onPress={() => setEditingPhone(false)}>
+                    <Text style={styles.cancelBtnText}>Cancel</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.saveBtn} onPress={handleSavePhone} disabled={savingProfile}>
+                    <Text style={styles.saveBtnText}>{savingProfile ? 'Saving...' : 'Save'}</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            )}
             <MenuItem
-              iconBg="#ede9fe"
-              icon={<MapPin color="#7c3aed" size={18} />}
+              iconBg="#e6f4f0"
+              icon={<MapPin color="#006948" size={18} />}
               label="Home Address"
-              sublabel="Jl. Kebon Jeruk No. 12, Jakarta"
-              onPress={() => navigation.navigate('AddYourHome')}
+              sublabel={homeAddress}
+              onPress={() => navigation.navigate('SetHomeAddress')}
               last
             />
           </MenuCard>
@@ -269,38 +370,41 @@ export const AccountSettingsScreen = () => {
           <SectionHeader title="Notifications" />
           <MenuCard>
             <MenuItem
-              iconBg="#dcfce7"
-              icon={<Bell color="#16a34a" size={18} />}
+              iconBg="#e6f4f0"
+              icon={<Bell color="#006948" size={18} />}
               label="Pickup Notifications"
               sublabel="Updates on your active pickups"
               rightEl={
                 <Toggle
-                  value={notifPickup}
-                  onValueChange={setNotifPickup}
+                  value={notificationPreferences?.pickup_enabled ?? true}
+                  onValueChange={(value) => handleTogglePreference('pickup_enabled', value)}
+                  disabled={togglesDisabled}
                 />
               }
             />
             <MenuItem
-              iconBg="#fef9c3"
-              icon={<ShoppingBag color="#ca8a04" size={18} />}
+              iconBg="#e6f4f0"
+              icon={<ShoppingBag color="#006948" size={18} />}
               label="Reward Alerts"
               sublabel="When EcoCoins are added"
               rightEl={
                 <Toggle
-                  value={notifReward}
-                  onValueChange={setNotifReward}
+                  value={notificationPreferences?.reward_enabled ?? true}
+                  onValueChange={(value) => handleTogglePreference('reward_enabled', value)}
+                  disabled={togglesDisabled}
                 />
               }
             />
             <MenuItem
-              iconBg="#fce7f3"
-              icon={<Tag color="#db2777" size={18} />}
+              iconBg="#e6f4f0"
+              icon={<Tag color="#006948" size={18} />}
               label="Promotions & Tips"
               sublabel="Eco tips and special offers"
               rightEl={
                 <Toggle
-                  value={notifPromo}
-                  onValueChange={setNotifPromo}
+                  value={notificationPreferences?.promo_enabled ?? false}
+                  onValueChange={(value) => handleTogglePreference('promo_enabled', value)}
+                  disabled={togglesDisabled}
                 />
               }
               last
@@ -311,33 +415,18 @@ export const AccountSettingsScreen = () => {
           <SectionHeader title="Security" />
           <MenuCard>
             <MenuItem
-              iconBg="#fff1f2"
-              icon={<Lock color="#e11d48" size={18} />}
+              iconBg="#e6f4f0"
+              icon={<Lock color="#006948" size={18} />}
               label="Change Password"
-              sublabel="Last changed 3 months ago"
-              onPress={() => Alert.alert('Coming soon', 'Password change will be available in the next update.')}
+              sublabel="Update your login password"
+              onPress={() => navigation.navigate('ChangePassword')}
             />
             <MenuItem
-              iconBg="#f0fdf4"
-              icon={<ShieldCheck color="#16a34a" size={18} />}
+              iconBg="#e6f4f0"
+              icon={<ShieldCheck color="#006948" size={18} />}
               label="Two-Factor Auth"
-              sublabel="Protect your account"
-              onPress={() => Alert.alert('Coming soon', '2FA will be available in the next update.')}
-              last
-            />
-          </MenuCard>
-
-          {/* Appearance */}
-          <SectionHeader title="Appearance" />
-          <MenuCard>
-            <MenuItem
-              iconBg="#f1f5f9"
-              icon={<Moon color="#475569" size={18} />}
-              label="Dark Mode"
-              sublabel="Switch to dark theme"
-              rightEl={
-                <Toggle value={darkMode} onValueChange={setDarkMode} />
-              }
+              sublabel="Protect your account with an authenticator app"
+              onPress={() => navigation.navigate('TwoFactorAuth')}
               last
             />
           </MenuCard>
@@ -346,11 +435,11 @@ export const AccountSettingsScreen = () => {
           <SectionHeader title="Account" />
           <MenuCard>
             <MenuItem
-              iconBg="#fff1f2"
-              icon={<Trash2 color="#e11d48" size={18} />}
+              iconBg="#ffdad6"
+              icon={<Trash2 color="#ba1a1a" size={18} />}
               label="Delete Account"
               sublabel="Permanently remove your data"
-              onPress={handleDeleteAccount}
+              onPress={() => setDeleteModalVisible(true)}
               danger
               last
             />
@@ -358,6 +447,13 @@ export const AccountSettingsScreen = () => {
 
           <View style={{ height: 40 }} />
         </ScrollView>
+        <DeleteAccountModal
+          visible={deleteModalVisible}
+          loading={deletingAccount}
+          onCancel={() => setDeleteModalVisible(false)}
+          onConfirm={handleDeleteAccount}
+        />
+        </View>
       </SafeAreaView>
     </View>
   );
@@ -365,8 +461,9 @@ export const AccountSettingsScreen = () => {
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f8f9ff' },
-  safeArea: { flex: 1 },
+  container: { flex: 1, backgroundColor: '#ffffff' },
+  safeArea: { flex: 1, backgroundColor: '#ffffff' },
+  scrollViewStyle: { backgroundColor: '#ffffff' },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -381,7 +478,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#f8fafc',
+    backgroundColor: '#ffffff',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -444,6 +541,24 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 14,
   },
+  avatarButton: {
+    width: 60,
+    height: 60,
+    position: 'relative',
+  },
+  avatarEditBadge: {
+    position: 'absolute',
+    right: -4,
+    bottom: -4,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: '#006948',
+    borderWidth: 2,
+    borderColor: '#ffffff',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   avatar: {
     width: 60,
     height: 60,
@@ -482,11 +597,17 @@ const styles = StyleSheet.create({
   },
   editNameBox: {
     marginTop: spacing.md,
-    backgroundColor: '#f8fafc',
+    backgroundColor: '#ffffff',
     borderRadius: 14,
     padding: spacing.md,
     borderWidth: 1,
     borderColor: '#e8edf2',
+  },
+  inlineEditBox: {
+    backgroundColor: '#ffffff',
+    padding: spacing.md,
+    borderTopWidth: 1,
+    borderTopColor: '#f1f5f9',
   },
   fieldLabel: {
     fontSize: 11,

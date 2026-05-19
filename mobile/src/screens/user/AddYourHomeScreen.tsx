@@ -12,7 +12,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { 
   ChevronLeft, 
-  Bell, 
   Home, 
   MapPin, 
   ArrowRight,
@@ -28,8 +27,10 @@ export const AddYourHomeScreen = () => {
   const colors = useThemeColors();
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top', 'left', 'right']}>
-      <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
+    <View style={[styles.container, { backgroundColor: colors.primary }]}>
+      <StatusBar barStyle="light-content" backgroundColor={colors.primary} />
+      <SafeAreaView style={{ flex: 1, backgroundColor: colors.primary }} edges={['top', 'left', 'right']}>
+        <View style={{ flex: 1, backgroundColor: colors.background }}>
       
       {/* Header */}
       <View style={styles.header}>
@@ -39,9 +40,7 @@ export const AddYourHomeScreen = () => {
         
         <Text style={[styles.logoText, { color: colors.primary }]}>EcoSort</Text>
         
-        <TouchableOpacity style={styles.iconBtn}>
-          <Bell color={colors.textBlackSoft} size={22} />
-        </TouchableOpacity>
+        <View style={styles.iconBtn} />
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
@@ -102,13 +101,15 @@ export const AddYourHomeScreen = () => {
       <View style={[styles.footer, { paddingBottom: Platform.OS === 'ios' ? spacing.xl : spacing.lg }]}>
         <TouchableOpacity 
           style={[styles.startBtn, { backgroundColor: colors.primary }]}
-          onPress={() => navigation.navigate('PickLocation')}
+          onPress={() => navigation.navigate('SetHomeAddress')}
         >
           <Text style={styles.startBtnText}>Setup Home Address</Text>
           <ArrowRight color={colors.white} size={20} />
         </TouchableOpacity>
       </View>
+        </View>
     </SafeAreaView>
+    </View>
   );
 };
 

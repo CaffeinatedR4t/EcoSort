@@ -109,8 +109,10 @@ export const ScanScreen = () => {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
+    <View style={[styles.container, { backgroundColor: '#006948' }]}>
       <StatusBar barStyle="light-content" backgroundColor="#006948" />
+      <SafeAreaView style={{ flex: 1, backgroundColor: '#006948' }} edges={['top', 'left', 'right']}>
+        <View style={{ flex: 1, backgroundColor: '#ffffff' }}>
       <View style={styles.header}>
         <Text style={styles.title}>Scan Waste</Text>
         <View style={styles.headerActions}>
@@ -205,7 +207,7 @@ export const ScanScreen = () => {
       {/* Floating Checkout Button */}
       {cart.length > 0 && !results && (
         <TouchableOpacity 
-          style={[styles.checkoutPill, { bottom: Platform.OS === 'ios' ? insets.bottom + 100 : 120 }]}
+          style={[styles.checkoutPill, { bottom: Platform.OS === 'ios' ? insets.bottom + 220 : 240 }]}
           onPress={() => navigation.navigate('PickLocation')}
         >
           <View style={styles.checkoutCount}>
@@ -284,7 +286,9 @@ export const ScanScreen = () => {
       </Modal>
 
       <BottomNav activeRoute="Scan" />
-    </SafeAreaView>
+        </View>
+      </SafeAreaView>
+    </View>
   );
 };
 

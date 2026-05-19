@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Alert, ActivityIndicator, StatusBar } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import MapView, { Marker, PROVIDER_DEFAULT } from 'react-native-maps';
@@ -11,19 +11,87 @@ import { usePickupStore } from '../../store/pickupStore';
 import { supabase } from '../../services/api/supabase';
 import { useAuthStore } from '../../store/authStore';
 import { MapPin, ChevronLeft } from 'lucide-react-native';
+import { isPickupAddressReady } from '../../utils/pickupLocation';
+import { assertUserCanCreatePickupRequest } from '../../utils/pickupRequest';
 
 export const PickLocationScreen = () => {
   const [location, setLocation] = useState<any>(null);
   const [address, setAddress] = useState('Fetching location...');
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [usingHomeAddress, setUsingHomeAddress] = useState(false);
+  const [addressResolving, setAddressResolving] = useState(false);
   const { cart, clearCart } = usePickupStore();
   const { user } = useAuthStore();
   const navigation = useNavigation<any>();
+  const addressDelayRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const addressRequestRef = useRef(0);
+
+  const resolveAddress = async (coords: { latitude: number; longitude: number }) => {
+    const requestId = ++addressRequestRef.current;
+    setAddressResolving(true);
+    setAddress('Locating...');
+    try {
+      const reverseGeocode = await Location.reverseGeocodeAsync(coords);
+      if (addressRequestRef.current !== requestId) return;
+
+      if (reverseGeocode.length > 0) {
+        const item = reverseGeocode[0];
+        const exactAddress = `${item.street || ''} ${item.name || ''}, ${item.city || ''}, ${item.region || ''}`
+          .replace(/\s+/g, ' ')
+          .trim();
+        setAddress(exactAddress || 'Address not found');
+      } else {
+        setAddress('Address not found');
+      }
+    } catch (e) {
+      if (addressRequestRef.current === requestId) {
+        setAddress('Address found at coordinates');
+      }
+    } finally {
+      if (addressRequestRef.current === requestId) {
+        setAddressResolving(false);
+      }
+    }
+  };
+
+  const scheduleAddressResolve = (coords: { latitude: number; longitude: number }) => {
+    const requestId = ++addressRequestRef.current;
+    if (addressDelayRef.current) {
+      clearTimeout(addressDelayRef.current);
+    }
+    setAddressResolving(true);
+    setAddress('Locating...');
+    addressDelayRef.current = setTimeout(() => {
+      if (addressRequestRef.current === requestId) {
+        resolveAddress(coords);
+      }
+    }, 700);
+  };
 
   useEffect(() => {
     (async () => {
       setLoading(true);
+      
+      // Use home address if available
+      if (user?.home_lat && user?.home_lng) {
+        const homeCoords = {
+          latitude: user.home_lat,
+          longitude: user.home_lng,
+        };
+        setLocation(homeCoords);
+        setUsingHomeAddress(true);
+        const homeAddress = user.home_address || '';
+        if (isPickupAddressReady(homeAddress)) {
+          setAddress(homeAddress);
+        } else {
+          await resolveAddress(homeCoords);
+        }
+        setLoading(false);
+        return;
+      }
+
+      // Otherwise, request GPS location
       let { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') {
         Alert.alert('Permission denied', 'Allow location access to set pickup point.');
@@ -31,25 +99,22 @@ export const PickLocationScreen = () => {
         return;
       }
 
-      let location = await Location.getCurrentPositionAsync({});
+      let position = await Location.getCurrentPositionAsync({});
       const coords = {
-        latitude: location.coords.latitude,
-        longitude: location.coords.longitude,
+        latitude: position.coords.latitude,
+        longitude: position.coords.longitude,
       };
       setLocation(coords);
-      
-      try {
-        const reverseGeocode = await Location.reverseGeocodeAsync(coords);
-        if (reverseGeocode.length > 0) {
-          const item = reverseGeocode[0];
-          setAddress(`${item.street || ''} ${item.name || ''}, ${item.city || ''}, ${item.region || ''}`);
-        }
-      } catch (e) {
-        setAddress('Address found at coordinates');
-      }
+      await resolveAddress(coords);
       setLoading(false);
     })();
-  }, []);
+
+    return () => {
+      if (addressDelayRef.current) {
+        clearTimeout(addressDelayRef.current);
+      }
+    };
+  }, [user]);
 
   const handleConfirmPickup = async () => {
     if (!user) {
@@ -59,6 +124,11 @@ export const PickLocationScreen = () => {
 
     if (!location) {
       Alert.alert('Error', 'Please select a location.');
+      return;
+    }
+
+    if (addressResolving || !isPickupAddressReady(address)) {
+      Alert.alert('Address loading', 'Please wait until the exact pickup address is loaded.');
       return;
     }
 
@@ -72,6 +142,8 @@ export const PickLocationScreen = () => {
     ).join(', ');
 
     try {
+      await assertUserCanCreatePickupRequest(user.id);
+
       const { error } = await (supabase.from('pickup_requests') as any).insert({
         user_id: user.id,
         status: 'PENDING',
@@ -102,7 +174,10 @@ export const PickLocationScreen = () => {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={[styles.container, { backgroundColor: '#006948' }]}>
+      <StatusBar barStyle="light-content" backgroundColor="#006948" />
+      <SafeAreaView style={{ flex: 1, backgroundColor: '#006948' }} edges={['top', 'left', 'right']}>
+        <View style={{ flex: 1, backgroundColor: '#ffffff' }}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
           <ChevronLeft color={colors.textBlack} />
@@ -127,10 +202,12 @@ export const PickLocationScreen = () => {
               longitudeDelta: 0.005,
             }}
             onRegionChangeComplete={(region) => {
-              setLocation({
+              const nextLocation = {
                 latitude: region.latitude,
                 longitude: region.longitude,
-              });
+              };
+              setLocation(nextLocation);
+              scheduleAddressResolve(nextLocation);
             }}
           >
             {location && <Marker coordinate={location} />}
@@ -143,18 +220,27 @@ export const PickLocationScreen = () => {
 
       <View style={styles.footer}>
         <View style={styles.addressBox}>
-          <Text style={styles.addressLabel}>PICKUP ADDRESS</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+            <Text style={styles.addressLabel}>PICKUP ADDRESS</Text>
+            {usingHomeAddress && (
+              <View style={styles.homeBadge}>
+                <Text style={styles.homeBadgeText}>Default Home</Text>
+              </View>
+            )}
+          </View>
           <Text style={styles.addressText} numberOfLines={2}>{address}</Text>
         </View>
         
         <Button 
-          title="Confirm Pickup Request" 
+          title={addressResolving ? 'Loading address...' : 'Confirm Pickup Request'} 
           onPress={handleConfirmPickup}
           loading={submitting}
-          disabled={!location || submitting}
+          disabled={!location || submitting || addressResolving || !isPickupAddressReady(address)}
         />
       </View>
+        </View>
     </SafeAreaView>
+    </View>
   );
 };
 

@@ -282,37 +282,7 @@ export const HelpSupportScreen = () => {
             </View>
           </View>
 
-          {/* Quick Contact — only when not searching */}
-          {search === '' && (
-            <View style={styles.section}>
-              <Text style={styles.sectionHeader}>Contact Us</Text>
-              <View style={styles.contactRow}>
-                <TouchableOpacity
-                  style={styles.contactCard}
-                  activeOpacity={0.75}
-                  onPress={() => Alert.alert('Live Chat', 'Opening live chat...')}
-                >
-                  <View style={[styles.contactIcon, { backgroundColor: '#dbeafe' }]}>
-                    <MessageCircle color="#0284c7" size={22} />
-                  </View>
-                  <Text style={styles.contactLabel}>Live Chat</Text>
-                  <Text style={styles.contactSub}>Avg. reply 5 min</Text>
-                </TouchableOpacity>
 
-                <TouchableOpacity
-                  style={styles.contactCard}
-                  activeOpacity={0.75}
-                  onPress={() => Linking.openURL('mailto:support@ecosort.id')}
-                >
-                  <View style={[styles.contactIcon, { backgroundColor: '#e0f2f1' }]}>
-                    <Mail color="#006948" size={22} />
-                  </View>
-                  <Text style={styles.contactLabel}>Email Us</Text>
-                  <Text style={styles.contactSub}>support@ecosort.id</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          )}
 
           {/* FAQ */}
           <View style={styles.section}>
@@ -340,82 +310,7 @@ export const HelpSupportScreen = () => {
             )}
           </View>
 
-          {/* Send a message — only when not searching */}
-          {search === '' && (
-            <View style={styles.section}>
-              <Text style={styles.sectionHeader}>Send a Message</Text>
-              <View style={styles.ticketCard}>
-                {sent ? (
-                  <View style={styles.sentBox}>
-                    <View style={styles.sentIcon}>
-                      <CheckCircle2 color="#006948" size={32} />
-                    </View>
-                    <Text style={styles.sentTitle}>Message Sent!</Text>
-                    <Text style={styles.sentSub}>
-                      We'll get back to you within 24 hours.
-                    </Text>
-                  </View>
-                ) : (
-                  <>
-                    {/* Topic chips */}
-                    <Text style={styles.fieldLabel}>TOPIC</Text>
-                    <View style={styles.topicRow}>
-                      {TOPICS.map((t) => (
-                        <TouchableOpacity
-                          key={t}
-                          onPress={() => setTopic(t)}
-                          style={[
-                            styles.topicChip,
-                            topic === t && styles.topicChipActive,
-                          ]}
-                        >
-                          <Text
-                            style={[
-                              styles.topicChipText,
-                              topic === t && styles.topicChipTextActive,
-                            ]}
-                          >
-                            {t.charAt(0).toUpperCase() + t.slice(1)}
-                          </Text>
-                        </TouchableOpacity>
-                      ))}
-                    </View>
 
-                    {/* Message input */}
-                    <Text style={[styles.fieldLabel, { marginTop: 16 }]}>
-                      YOUR MESSAGE
-                    </Text>
-                    <TextInput
-                      value={message}
-                      onChangeText={setMessage}
-                      placeholder="Describe your issue in detail..."
-                      placeholderTextColor="#94a3b8"
-                      multiline
-                      numberOfLines={4}
-                      textAlignVertical="top"
-                      style={styles.messageInput}
-                    />
-
-                    {/* Send button */}
-                    <TouchableOpacity
-                      onPress={handleSend}
-                      disabled={!message.trim() || sending}
-                      style={[
-                        styles.sendBtn,
-                        (!message.trim() || sending) && styles.sendBtnDisabled,
-                      ]}
-                      activeOpacity={0.8}
-                    >
-                      <Send color="#ffffff" size={18} />
-                      <Text style={styles.sendBtnText}>
-                        {sending ? 'Sending...' : 'Send Message'}
-                      </Text>
-                    </TouchableOpacity>
-                  </>
-                )}
-              </View>
-            </View>
-          )}
 
           {/* Footer */}
           <Text style={styles.footer}>
@@ -431,7 +326,7 @@ export const HelpSupportScreen = () => {
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f8f9ff' },
+  container: { flex: 1, backgroundColor: '#ffffff' },
   safeArea: { flex: 1 },
 
   header: {

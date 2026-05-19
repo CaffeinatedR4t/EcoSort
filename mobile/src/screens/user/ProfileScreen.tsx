@@ -7,21 +7,22 @@ import {
   ScrollView, 
   Platform, 
   StatusBar,
-  Image
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { useAuthStore } from '../../store/authStore';
 import { supabase } from '../../services/api/supabase';
+import { useNotificationStore } from '../../store/notificationStore';
 import { spacing } from '../../services/theme/spacing';
 import { Card } from '../../components/Card';
 import { BottomNav } from '../../components/BottomNav';
 import { Logo } from '../../components/Logo';
+import { ProfileAvatar } from '../../components/ProfileAvatar';
 import { 
   Bell, 
   Recycle, 
   Award, 
-  UserCircle, 
+  UserCircle,
   HelpCircle, 
   LogOut, 
   ChevronRight
@@ -29,6 +30,7 @@ import {
 
 export const ProfileScreen = () => {
   const { user, logout } = useAuthStore();
+  const { unreadCount, fetchNotifications } = useNotificationStore();
   const navigation = useNavigation<any>();
   const insets = useSafeAreaInsets();
 
@@ -71,6 +73,9 @@ export const ProfileScreen = () => {
     };
     
     fetchStats();
+    if (user) {
+      fetchNotifications(user.id);
+    }
   }, [user]);
 
   // Derived stats
@@ -79,10 +84,10 @@ export const ProfileScreen = () => {
   const rankingText = `Top ${ranking}%`;
 
   return (
-    <View style={[styles.container, { backgroundColor: '#EEF4FF' }]}>
+    <View style={[styles.container, { backgroundColor: '#006948' }]}>
       <StatusBar barStyle="light-content" backgroundColor="#006948" />
-      
-      <SafeAreaView style={{ flex: 1 }} edges={['top', 'left', 'right']}>
+      <SafeAreaView style={{ flex: 1, backgroundColor: '#006948' }} edges={['top', 'left', 'right']}>
+        <View style={{ flex: 1, backgroundColor: '#ffffff' }}>
         <ScrollView 
           contentContainerStyle={[
             styles.scrollContent, 
@@ -104,13 +109,23 @@ export const ProfileScreen = () => {
               onPress={() => navigation.navigate('Notification')}
             >
               <Bell color="#006948" size={22} />
+              {unreadCount > 0 && (
+                <View style={styles.badgeContainer}>
+                  <Text style={styles.badgeTextCount}>{unreadCount > 9 ? '9+' : unreadCount}</Text>
+                </View>
+              )}
             </TouchableOpacity>
           </View>
 
           {/* Profile Card */}
           <View style={styles.profileCard}>
             <View style={[styles.avatarWrapper, { backgroundColor: '#006948' }]}>
-              <UserCircle color="#fff" size={80} strokeWidth={1} />
+              <ProfileAvatar
+                name={user?.name}
+                avatarUrl={user?.avatar_url}
+                size={92}
+                fallback="U"
+              />
             </View>
             <Text style={styles.userName}>{user?.name || 'User'}</Text>
             <Text style={styles.userTitle}>Eco Champion • Level {level}</Text>
@@ -138,7 +153,7 @@ export const ProfileScreen = () => {
               <Text style={styles.smallStatLabel}>ITEMS</Text>
             </Card>
             <Card style={styles.smallStatCard}>
-              <Award color="#a36700" size={24} style={styles.statIcon} />
+              <Award color="#006948" size={24} style={styles.statIcon} />
               <Text style={styles.smallStatValue}>{rankingText}</Text>
               <Text style={styles.smallStatLabel}>RANKING</Text>
             </Card>
@@ -151,8 +166,8 @@ export const ProfileScreen = () => {
               style={styles.menuItem} 
               onPress={() => navigation.navigate('AccountSettings')}
             >
-              <View style={[styles.menuIconBox, {backgroundColor: '#e0f2fe'}]}>
-                <UserCircle color="#0284c7" size={20} />
+              <View style={[styles.menuIconBox, {backgroundColor: '#e6f4f0'}]}>
+                <UserCircle color="#006948" size={20} />
               </View>
               <Text style={styles.menuText}>Account Settings</Text>
               <ChevronRight color="#9ca3af" size={20} />
@@ -164,21 +179,22 @@ export const ProfileScreen = () => {
               onPress={() => navigation.navigate('HelpSupport')}
             >
               <View style={[styles.menuIconBox, {backgroundColor: '#f1f5f9'}]}>
-                <HelpCircle color="#475569" size={20} />
+                <HelpCircle color="#006948" size={20} />
               </View>
               <Text style={styles.menuText}>Help & Support</Text>
               <ChevronRight color="#9ca3af" size={20} />
             </TouchableOpacity>
 
             <TouchableOpacity style={[styles.menuItem, {borderBottomWidth: 0}]} onPress={logout}>
-              <View style={[styles.menuIconBox, {backgroundColor: '#ffe4e6'}]}>
-                <LogOut color="#e11d48" size={20} />
+              <View style={[styles.menuIconBox, {backgroundColor: '#ffdad6'}]}>
+                <LogOut color="#ba1a1a" size={20} />
               </View>
-              <Text style={[styles.menuText, {color: '#e11d48'}]}>Log Out</Text>
+              <Text style={[styles.menuText, {color: '#ba1a1a'}]}>Log Out</Text>
             </TouchableOpacity>
           </Card>
 
         </ScrollView>
+        </View>
       </SafeAreaView>
 
       <BottomNav activeRoute="Profile" />
@@ -222,9 +238,10 @@ const styles = StyleSheet.create({
   iconButton: {
     width: 44,
     height: 44,
-    borderRadius: 22,
+    borderRadius: 14,
     justifyContent: 'center',
     alignItems: 'center',
+    position: 'relative',
     ...Platform.select({
       ios: {
         shadowColor: '#000',
@@ -236,6 +253,25 @@ const styles = StyleSheet.create({
         elevation: 3,
       },
     }),
+  },
+  badgeContainer: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    backgroundColor: '#ba1a1a',
+    minWidth: 16,
+    height: 16,
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 4,
+    borderWidth: 1.5,
+    borderColor: '#fff',
+  },
+  badgeTextCount: {
+    color: '#fff',
+    fontSize: 9,
+    fontWeight: '800',
   },
   profileCard: {
     backgroundColor: '#fff',
@@ -259,8 +295,7 @@ const styles = StyleSheet.create({
   avatarWrapper: {
     width: 100,
     height: 100,
-    borderRadius: 50,
-    backgroundColor: '#006948',
+    borderRadius: 28,
     justifyContent: 'center',
     alignItems: 'center',
     marginTop: -70,
@@ -271,7 +306,7 @@ const styles = StyleSheet.create({
   avatarImage: {
     width: 92,
     height: 92,
-    borderRadius: 46,
+    borderRadius: 24,
   },
   userName: {
     fontSize: 24,
@@ -384,7 +419,7 @@ const styles = StyleSheet.create({
   menuIconBox: {
     width: 40,
     height: 40,
-    borderRadius: 20,
+    borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: spacing.md,

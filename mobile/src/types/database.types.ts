@@ -15,6 +15,16 @@ export interface Database {
           name: string
           role: 'user' | 'collector' | 'admin'
           balance: number
+          current_lat: number | null
+          current_lng: number | null
+          home_address: string | null
+          home_lat: number | null
+          home_lng: number | null
+          phone_number: string | null
+          avatar_url: string | null
+          vehicle_type: string | null
+          vehicle_plate: string | null
+          operating_area: string | null
           created_at: string
         }
         Insert: {
@@ -22,6 +32,16 @@ export interface Database {
           name: string
           role?: 'user' | 'collector' | 'admin'
           balance?: number
+          current_lat?: number | null
+          current_lng?: number | null
+          home_address?: string | null
+          home_lat?: number | null
+          home_lng?: number | null
+          phone_number?: string | null
+          avatar_url?: string | null
+          vehicle_type?: string | null
+          vehicle_plate?: string | null
+          operating_area?: string | null
           created_at?: string
         }
         Update: {
@@ -29,6 +49,16 @@ export interface Database {
           name?: string
           role?: 'user' | 'collector' | 'admin'
           balance?: number
+          current_lat?: number | null
+          current_lng?: number | null
+          home_address?: string | null
+          home_lat?: number | null
+          home_lng?: number | null
+          phone_number?: string | null
+          avatar_url?: string | null
+          vehicle_type?: string | null
+          vehicle_plate?: string | null
+          operating_area?: string | null
           created_at?: string
         }
       }
@@ -163,7 +193,7 @@ export interface Database {
           user_id: string
           title: string
           message: string
-          type: 'pickup' | 'reward' | 'system'
+          type: 'pickup' | 'reward' | 'promo' | 'system'
           is_read: boolean
           created_at: string
         }
@@ -172,7 +202,7 @@ export interface Database {
           user_id: string
           title: string
           message: string
-          type: 'pickup' | 'reward' | 'system'
+          type: 'pickup' | 'reward' | 'promo' | 'system'
           is_read?: boolean
           created_at?: string
         }
@@ -181,9 +211,38 @@ export interface Database {
           user_id?: string
           title?: string
           message?: string
-          type?: 'pickup' | 'reward' | 'system'
+          type?: 'pickup' | 'reward' | 'promo' | 'system'
           is_read?: boolean
           created_at?: string
+        }
+      }
+      notification_preferences: {
+        Row: {
+          user_id: string
+          pickup_enabled: boolean
+          reward_enabled: boolean
+          promo_enabled: boolean
+          system_enabled: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          user_id: string
+          pickup_enabled?: boolean
+          reward_enabled?: boolean
+          promo_enabled?: boolean
+          system_enabled?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          user_id?: string
+          pickup_enabled?: boolean
+          reward_enabled?: boolean
+          promo_enabled?: boolean
+          system_enabled?: boolean
+          created_at?: string
+          updated_at?: string
         }
       }
     }

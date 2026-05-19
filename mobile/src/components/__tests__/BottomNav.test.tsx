@@ -5,11 +5,16 @@ import { BottomNav } from '../BottomNav';
 import { NavigationContainer } from '@react-navigation/native';
 
 // Mock lucide-react-native to check for specific icons
-jest.mock('lucide-react-native', () => ({
-  Home: 'HomeIcon',
-  User: 'UserIcon',
-  Maximize: 'ScanIcon',
-}));
+jest.mock('lucide-react-native', () => {
+  const React = require('react');
+  const { View } = require('react-native');
+  return {
+    Home: () => <View testID="HomeIcon" />,
+    User: () => <View testID="UserIcon" />,
+    Maximize: () => <View testID="ScanIcon" />,
+    ScanLine: () => <View testID="ScanIcon" />,
+  };
+});
 
 // Mock navigation
 jest.mock('@react-navigation/native', () => {
@@ -38,14 +43,14 @@ jest.mock('react-native-safe-area-context', () => ({
 }));
 
 describe('BottomNav', () => {
-  it('renders exactly 3 navigation items and no text labels', () => {
-    const { queryAllByText, getByTestId, queryByText } = render(
+  it('renders exactly 3 navigation items and their text labels', () => {
+    const { getByText } = render(
       <BottomNav activeRoute="Home" />
     );
 
-    // Should NOT have "Home", "Profile", or "Scan" text labels
-    expect(queryByText('Home')).toBeNull();
-    expect(queryByText('Profile')).toBeNull();
-    expect(queryByText('Scan')).toBeNull();
+    // Should HAVE "Home", "Profile", or "Scan" text labels
+    expect(getByText('Home')).toBeTruthy();
+    expect(getByText('Profile')).toBeTruthy();
+    expect(getByText('Scan')).toBeTruthy();
   });
 });

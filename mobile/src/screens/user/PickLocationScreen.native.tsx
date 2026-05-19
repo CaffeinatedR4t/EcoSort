@@ -10,6 +10,7 @@ import { spacing } from '../../services/theme/spacing';
 import { Button } from '../../components/Button';
 import { usePickupStore } from '../../store/pickupStore';
 import { useAuthStore } from '../../store/authStore';
+import { isPickupAddressReady } from '../../utils/pickupLocation';
 
 const INITIAL_REGION: Region = {
   latitude: -6.200000,
@@ -29,6 +30,8 @@ export const PickLocationScreen = () => {
   const [permissionGranted, setPermissionGranted] = useState(false);
   
   const mapRef = useRef<MapView>(null);
+  const addressDelayRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const addressRequestRef = useRef(0);
 
   useEffect(() => {
     (async () => {
@@ -49,14 +52,23 @@ export const PickLocationScreen = () => {
         };
         setRegion(newRegion);
         mapRef.current?.animateToRegion(newRegion, 1000);
+        reverseGeocode(newRegion.latitude, newRegion.longitude);
       } catch (error) {
         console.warn('Error getting current location:', error);
       }
     })();
+
+    return () => {
+      if (addressDelayRef.current) {
+        clearTimeout(addressDelayRef.current);
+      }
+    };
   }, []);
 
   const reverseGeocode = async (lat: number, lon: number) => {
+    const requestId = ++addressRequestRef.current;
     setIsReverseGeocoding(true);
+    setAddress('Locating...');
     try {
       // Using free OSM Nominatim API
       const response = await fetch(
@@ -68,6 +80,8 @@ export const PickLocationScreen = () => {
         }
       );
       const data = await response.json();
+      if (addressRequestRef.current !== requestId) return;
+
       if (data && data.display_name) {
         setAddress(data.display_name);
       } else {
@@ -75,19 +89,41 @@ export const PickLocationScreen = () => {
       }
     } catch (error) {
       console.error('Reverse geocoding error:', error);
-      setAddress('Error fetching address');
+      if (addressRequestRef.current === requestId) {
+        setAddress('Error fetching address');
+      }
     } finally {
-      setIsReverseGeocoding(false);
+      if (addressRequestRef.current === requestId) {
+        setIsReverseGeocoding(false);
+      }
     }
+  };
+
+  const scheduleReverseGeocode = (lat: number, lon: number) => {
+    const requestId = ++addressRequestRef.current;
+    if (addressDelayRef.current) {
+      clearTimeout(addressDelayRef.current);
+    }
+    setIsReverseGeocoding(true);
+    setAddress('Locating...');
+    addressDelayRef.current = setTimeout(() => {
+      if (addressRequestRef.current === requestId) {
+        reverseGeocode(lat, lon);
+      }
+    }, 700);
   };
 
   const onRegionChangeComplete = (newRegion: Region) => {
     setRegion(newRegion);
-    reverseGeocode(newRegion.latitude, newRegion.longitude);
+    scheduleReverseGeocode(newRegion.latitude, newRegion.longitude);
   };
 
   const handleConfirm = async () => {
     if (!user) return;
+    if (isReverseGeocoding || !isPickupAddressReady(address)) {
+      Alert.alert('Address loading', 'Please wait until the exact pickup address is loaded.');
+      return;
+    }
 
     try {
       const locationData = {
@@ -155,10 +191,10 @@ export const PickLocationScreen = () => {
         </View>
 
         <Button 
-          title={loading ? 'Requesting...' : 'Confirm Pickup Location'} 
+          title={isReverseGeocoding ? 'Loading address...' : loading ? 'Requesting...' : 'Confirm Pickup Location'} 
           onPress={handleConfirm} 
           loading={loading}
-          disabled={isReverseGeocoding}
+          disabled={isReverseGeocoding || !isPickupAddressReady(address)}
           style={styles.confirmBtn}
         />
       </View>

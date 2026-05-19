@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { supabase } from '../services/api/supabase';
 import { Database } from '../types/database.types';
+import { useNotificationPreferenceStore } from './notificationPreferenceStore';
 
 type Notification = Database['public']['Tables']['notifications']['Row'];
 
@@ -16,7 +17,7 @@ interface NotificationState {
     userId: string;
     title: string;
     message: string;
-    type: 'pickup' | 'reward' | 'system';
+    type: 'pickup' | 'reward' | 'promo' | 'system';
   }) => Promise<void>;
 }
 
@@ -109,6 +110,11 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
 
   createNotification: async ({ userId, title, message, type }) => {
     try {
+      const enabled = await useNotificationPreferenceStore
+        .getState()
+        .isNotificationEnabled(userId, type);
+      if (!enabled) return;
+
       const { error } = await supabase
         .from('notifications')
         .insert([

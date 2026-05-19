@@ -2,6 +2,8 @@ import { create } from 'zustand';
 import { supabase } from '../services/api/supabase';
 import { Database } from '../types/database.types';
 import { useNotificationStore } from './notificationStore';
+import { isPickupAddressReady } from '../utils/pickupLocation';
+import { assertUserCanCreatePickupRequest } from '../utils/pickupRequest';
 
 type PickupRequest = Database['public']['Tables']['pickup_requests']['Row'];
 
@@ -47,44 +49,54 @@ export const usePickupStore = create<PickupState>((set, get) => ({
   },
   createRequest: async (userId, location) => {
     set({ loading: true });
-    
-    const cartItems = get().cart;
-    
-    // Determine dominant type
-    const counts: Record<string, number> = {};
-    cartItems.forEach(item => {
-      counts[item.waste_type] = (counts[item.waste_type] || 0) + 1;
-    });
-    
-    let dominantType = 'other';
-    let maxCount = 0;
-    Object.entries(counts).forEach(([type, count]) => {
-      if (count > maxCount) {
-        maxCount = count;
-        dominantType = type;
+
+    try {
+      if (!isPickupAddressReady(location.address)) {
+        throw new Error('Please wait until the exact pickup address is loaded.');
       }
-    });
 
-    // Descriptive hint with dominant type first
-    const itemsList = cartItems.map(item => 
-      `${item.waste_type}${item.productName ? ` (${item.productName})` : ''}`
-    ).join(', ');
-    
-    const waste_hint = `${dominantType.toUpperCase()} Bag: ${itemsList}`;
+      await assertUserCanCreatePickupRequest(userId);
 
-    const { error } = await (supabase
-      .from('pickup_requests') as any)
-      .insert([
-        { 
-          user_id: userId, 
-          location, 
-          status: 'PENDING',
-          waste_hint: waste_hint || 'Mixed waste',
+      const cartItems = get().cart;
+      
+      // Determine dominant type
+      const counts: Record<string, number> = {};
+      cartItems.forEach(item => {
+        counts[item.waste_type] = (counts[item.waste_type] || 0) + 1;
+      });
+      
+      let dominantType = 'other';
+      let maxCount = 0;
+      Object.entries(counts).forEach(([type, count]) => {
+        if (count > maxCount) {
+          maxCount = count;
+          dominantType = type;
         }
-      ]);
-    
-    if (error) throw error;
-    set({ loading: false, cart: [] }); 
+      });
+
+      // Descriptive hint with dominant type first
+      const itemsList = cartItems.map(item => 
+        `${item.waste_type}${item.productName ? ` (${item.productName})` : ''}`
+      ).join(', ');
+      
+      const waste_hint = `${dominantType.toUpperCase()} Bag: ${itemsList}`;
+
+      const { error } = await (supabase
+        .from('pickup_requests') as any)
+        .insert([
+          { 
+            user_id: userId, 
+            location, 
+            status: 'PENDING',
+            waste_hint: waste_hint || 'Mixed waste',
+          }
+        ]);
+      
+      if (error) throw error;
+      set({ cart: [] }); 
+    } finally {
+      set({ loading: false });
+    }
   },
   fetchUserRequests: async (userId) => {
     set({ loading: true });

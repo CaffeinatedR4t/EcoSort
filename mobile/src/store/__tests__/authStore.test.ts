@@ -49,4 +49,28 @@ describe('authStore role routing state', () => {
     await authPromise;
     expect(useAuthStore.getState().user?.role).toBe('admin');
   });
+
+  it('deletes the current public user profile and signs out', async () => {
+    const eq = jest.fn().mockResolvedValue({ error: null });
+    const deleteFn = jest.fn(() => ({ eq }));
+    (supabase.from as jest.Mock).mockReturnValue({ delete: deleteFn });
+    (supabase.auth.signOut as jest.Mock).mockResolvedValue({ error: null });
+
+    useAuthStore.setState({
+      user: { id: 'user-1', name: 'User', role: 'user', balance: 0 },
+      session: { user: { id: 'user-1' } },
+      transactions: [{ id: 'tx-1' }],
+      withdrawals: [{ id: 'wd-1' }],
+    });
+
+    const result = await useAuthStore.getState().deleteAccount();
+
+    expect(result).toEqual({ success: true });
+    expect(supabase.from).toHaveBeenCalledWith('users');
+    expect(deleteFn).toHaveBeenCalled();
+    expect(eq).toHaveBeenCalledWith('id', 'user-1');
+    expect(supabase.auth.signOut).toHaveBeenCalled();
+    expect(useAuthStore.getState().user).toBeNull();
+    expect(useAuthStore.getState().transactions).toEqual([]);
+  });
 });

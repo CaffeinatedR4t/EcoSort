@@ -4,15 +4,27 @@ import { supabase } from '../services/api/supabase';
 interface UserProfile {
   id: string;
   name: string;
+  email?: string;
   role: 'user' | 'collector' | 'admin';
   balance: number;
+  current_lat?: number | null;
+  current_lng?: number | null;
+  home_address?: string | null;
+  home_lat?: number | null;
+  home_lng?: number | null;
+  phone_number?: string | null;
+  avatar_url?: string | null;
+  vehicle_type?: string | null;
+  vehicle_plate?: string | null;
+  operating_area?: string | null;
 }
 
-const normalizeProfile = (profile: any): UserProfile => {
+const normalizeProfile = (profile: any, authEmail?: string | null): UserProfile => {
   const role = String(profile?.role || 'user').trim().toLowerCase();
 
   return {
     ...profile,
+    email: authEmail || profile?.email,
     role: role === 'admin' || role === 'collector' ? role : 'user',
     balance: Number(profile?.balance || 0),
   };
@@ -28,6 +40,14 @@ interface AuthState {
   setSession: (session: any | null) => void;
   initialize: () => Promise<void>;
   fetchProfile: () => Promise<void>;
+  updateProfile: (data: {
+    name?: string;
+    phone_number?: string | null;
+    avatar_url?: string | null;
+    vehicle_type?: string | null;
+    vehicle_plate?: string | null;
+    operating_area?: string | null;
+  }) => Promise<{ success: boolean; error?: string }>;
   fetchTransactions: () => Promise<void>;
   fetchWithdrawals: () => Promise<void>;
   requestWithdrawal: (data: {
@@ -37,6 +57,7 @@ interface AuthState {
     account_holder_name: string;
   }) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
+  deleteAccount: () => Promise<{ success: boolean; error?: string }>;
 }
 
 export const useAuthStore = create<AuthState>((set, get) => ({
@@ -63,7 +84,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         .maybeSingle();
       
       if (profile) {
-        set({ user: normalizeProfile(profile) });
+        set({ user: normalizeProfile(profile, session.user.email) });
       }
     }
 
@@ -91,7 +112,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           }
 
           if (profile) {
-            set({ user: normalizeProfile(profile) });
+            set({ user: normalizeProfile(profile, session.user.email) });
           } else {
             console.warn('No profile found for user ID:', session.user.id);
           }
@@ -114,8 +135,31 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       .maybeSingle();
     
     if (profile && !error) {
-      set({ user: normalizeProfile(profile) });
+      const authEmail = get().session?.user?.email;
+      set({ user: normalizeProfile(profile, authEmail) });
     }
+  },
+  updateProfile: async (profileData) => {
+    const userId = get().user?.id || get().session?.user?.id;
+    const user = get().user;
+    if (!userId || !user) return { success: false, error: 'Not authenticated' };
+
+    const updates = Object.fromEntries(
+      Object.entries(profileData).filter(([, value]) => value !== undefined)
+    );
+
+    if (Object.keys(updates).length === 0) {
+      return { success: true };
+    }
+
+    const { error } = await (supabase.from('users') as any)
+      .update(updates)
+      .eq('id', userId);
+
+    if (error) return { success: false, error: error.message };
+
+    set({ user: normalizeProfile({ ...user, ...updates }) });
+    return { success: true };
   },
   fetchTransactions: async () => {
     const userId = get().session?.user?.id;
@@ -216,5 +260,19 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   logout: async () => {
     await supabase.auth.signOut();
     set({ user: null, session: null, transactions: [], withdrawals: [] });
+  },
+  deleteAccount: async () => {
+    const userId = get().user?.id || get().session?.user?.id;
+    if (!userId) return { success: false, error: 'Not authenticated' };
+
+    const { error } = await (supabase.from('users') as any)
+      .delete()
+      .eq('id', userId);
+
+    if (error) return { success: false, error: error.message };
+
+    await supabase.auth.signOut();
+    set({ user: null, session: null, transactions: [], withdrawals: [] });
+    return { success: true };
   },
 }));

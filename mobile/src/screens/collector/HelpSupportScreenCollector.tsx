@@ -140,29 +140,7 @@ export const HelpSupportScreen = () => {
           </View>
         </View>
 
-        {/* Quick Contact */}
-        {search === '' && (
-          <>
-            <Text style={styles.sectionLabel}>CONTACT DRIVER SUPPORT</Text>
-            <View style={styles.contactRow}>
-              <TouchableOpacity style={styles.contactCard} activeOpacity={0.75} onPress={() => Alert.alert('Driver Support', 'Connecting to driver support...')}>
-                <View style={[styles.contactIcon, { backgroundColor: '#dbeafe' }]}>
-                  <MessageCircle color="#0284c7" size={22} />
-                </View>
-                <Text style={styles.contactLabel}>Live Chat</Text>
-                <Text style={styles.contactSub}>Driver priority line</Text>
-              </TouchableOpacity>
 
-              <TouchableOpacity style={styles.contactCard} activeOpacity={0.75} onPress={() => Linking.openURL('mailto:driver@ecosort.id')}>
-                <View style={[styles.contactIcon, { backgroundColor: PRIMARY_LIGHT }]}>
-                  <Mail color={PRIMARY} size={22} />
-                </View>
-                <Text style={styles.contactLabel}>Email Us</Text>
-                <Text style={styles.contactSub}>driver@ecosort.id</Text>
-              </TouchableOpacity>
-            </View>
-          </>
-        )}
 
         {/* FAQ */}
         <Text style={styles.sectionLabel}>{search ? `RESULTS FOR "${search.toUpperCase()}"` : 'DRIVER FAQ'}</Text>
@@ -180,46 +158,7 @@ export const HelpSupportScreen = () => {
           )}
         </View>
 
-        {/* Send message */}
-        {search === '' && (
-          <>
-            <Text style={styles.sectionLabel}>SEND A TICKET</Text>
-            <View style={styles.ticketCard}>
-              {sent ? (
-                <View style={styles.sentBox}>
-                  <View style={styles.sentIcon}>
-                    <CheckCircle2 color={PRIMARY} size={32} />
-                  </View>
-                  <Text style={styles.sentTitle}>Message Sent!</Text>
-                  <Text style={styles.sentSub}>Driver support will respond within 24 hours.</Text>
-                </View>
-              ) : (
-                <>
-                  <Text style={styles.fieldLabel}>TOPIC</Text>
-                  <View style={styles.topicRow}>
-                    {TOPICS.map((t) => (
-                      <TouchableOpacity key={t} onPress={() => setTopic(t)} style={[styles.topicChip, topic === t && styles.topicChipActive]}>
-                        <Text style={[styles.topicChipText, topic === t && styles.topicChipTextActive]}>
-                          {t.charAt(0).toUpperCase() + t.slice(1)}
-                        </Text>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-                  <Text style={[styles.fieldLabel, { marginTop: 16 }]}>YOUR MESSAGE</Text>
-                  <TextInput
-                    value={message} onChangeText={setMessage}
-                    placeholder="Describe your operational issue..."
-                    placeholderTextColor="#94a3b8" multiline numberOfLines={4} textAlignVertical="top"
-                    style={styles.messageInput}
-                  />
-                  <TouchableOpacity onPress={handleSend} disabled={!message.trim() || sending} style={[styles.sendBtn, (!message.trim() || sending) && styles.sendBtnDisabled]} activeOpacity={0.8}>
-                    <Text style={styles.sendBtnText}>{sending ? 'Sending...' : 'Send Message'}</Text>
-                  </TouchableOpacity>
-                </>
-              )}
-            </View>
-          </>
-        )}
+
 
         <Text style={styles.footer}>EcoSort Driver v1.0.0 • driver@ecosort.id</Text>
         <View style={{ height: 40 }} />
@@ -230,7 +169,7 @@ export const HelpSupportScreen = () => {
 
 // ─── Styles ───
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f8f9ff' },
+  container: { flex: 1, backgroundColor: '#ffffff' },
   screenHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: spacing.md, backgroundColor: WHITE, borderBottomWidth: 1, borderBottomColor: '#f1f5f9' },
   backButton: { width: 44, height: 44, justifyContent: 'center', alignItems: 'center' },
   screenHeaderTitle: { fontSize: 18, fontWeight: '800', color: TEXT_BLACK },

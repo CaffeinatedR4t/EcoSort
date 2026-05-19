@@ -29,8 +29,8 @@ jest.mock('react-native-maps', () => {
   const { View } = require('react-native');
   return {
     __esModule: true,
-    default: ({ children }: any) => <View testID="map-view">{children}</View>,
-    Marker: ({ children }: any) => <View>{children}</View>,
+    default: ({ children, ...props }: any) => <View testID="map-view" {...props}>{children}</View>,
+    Marker: ({ children, anchor }: any) => <View testID="map-marker" anchor={anchor}>{children}</View>,
     PROVIDER_DEFAULT: 'default',
   };
 });
@@ -51,6 +51,21 @@ const mockCompletedPickups = [
     waste_hint: 'PLASTIC Bag',
     created_at: new Date().toISOString(),
     waste_classifications: [{ waste_type: 'plastic', collector_weight_kg: 2.5 }],
+  },
+];
+
+const mockRoutePickups = [
+  {
+    id: 'route-pickup-1',
+    location: { lat: -6.2, lng: 106.8, address: 'Jakarta One' },
+    waste_hint: 'PLASTIC Bag',
+    created_at: new Date().toISOString(),
+  },
+  {
+    id: 'route-pickup-2',
+    location: { lat: -6.21, lng: 106.81, address: 'Jakarta Two' },
+    waste_hint: 'PAPER Bag',
+    created_at: new Date().toISOString(),
   },
 ];
 
@@ -93,27 +108,46 @@ describe('CollectorHomeScreen', () => {
     });
   });
 
-  it('uses user-style collector navigation and removes mock-only profile data', async () => {
-    const { getByText, getByTestId, queryByText, queryByTestId } = render(<CollectorHomeScreen />);
+  it('uses the user-style driver home shell and removes mock-only profile data', async () => {
+    const { getByText, getAllByText, getByTestId, queryByText, queryByTestId } = render(<CollectorHomeScreen />);
 
-    expect(getByTestId('collector-home-bg-circle')).toBeTruthy();
     expect(getByText('EcoSort')).toBeTruthy();
-    expect(getByText('AVAILABLE BALANCE')).toBeTruthy();
+    expect(getByTestId('driver-home-header-shell')).toHaveStyle({
+      backgroundColor: '#ffffff',
+      borderRadius: 28,
+    });
+    expect(getByTestId('collector-screen-content')).toHaveStyle({ backgroundColor: '#ffffff' });
+    expect(getByTestId('driver-finished-stat-icon')).toHaveStyle({
+      backgroundColor: '#e0f2f1',
+      borderRadius: 14,
+    });
+    expect(getByTestId('driver-collected-stat-icon')).toHaveStyle({
+      backgroundColor: '#e0f2f1',
+      borderRadius: 14,
+    });
+    expect(getByText(/Good (morning|afternoon|evening|night)/i)).toBeTruthy();
+    expect(getByText('Driver')).toBeTruthy();
+    expect(getByText('Eco Coins')).toBeTruthy();
     expect(getByText('Rp 10.000')).toBeTruthy();
-    expect(getByText('REDEEM')).toBeTruthy();
-    expect(getByText('TRANSFER')).toBeTruthy();
+    expect(getByText('Redeem')).toBeTruthy();
+    expect(getByText('Pickup Requests')).toBeTruthy();
+    expect(queryByText('AVAILABLE BALANCE')).toBeNull();
+    expect(queryByText('TRANSFER')).toBeNull();
     expect(queryByText(/this week/i)).toBeNull();
     expect(getByText('Home')).toBeTruthy();
     expect(getByText('Route')).toBeTruthy();
-    expect(getByText('History')).toBeTruthy();
+    expect(getAllByText('History').length).toBeGreaterThanOrEqual(1);
     expect(getByText('Profile')).toBeTruthy();
     expect(queryByText('Log Out')).toBeNull();
 
     fireEvent.press(getByTestId('collector-notification-button'));
     expect(mockNavigate).toHaveBeenCalledWith('Notification');
 
-    fireEvent.press(getByText('REDEEM'));
+    fireEvent.press(getByText('Redeem'));
     expect(mockNavigate).toHaveBeenCalledWith('Withdrawal');
+
+    fireEvent.press(getByTestId('driver-wallet-history-button'));
+    expect(mockNavigate).toHaveBeenCalledWith('TransactionHistory');
 
     fireEvent.press(getByText('Route'));
 
@@ -121,6 +155,12 @@ describe('CollectorHomeScreen', () => {
       expect(getByText('EcoSort')).toBeTruthy();
       expect(getByTestId('route-notification-button')).toBeTruthy();
       expect(getByText('ACTIVE STOPS')).toBeTruthy();
+      expect(getByTestId('collector-screen-content')).toHaveStyle({ backgroundColor: '#ffffff' });
+      expect(getByTestId('route-header-wrapper')).toHaveStyle({
+        paddingHorizontal: 24,
+        paddingTop: 16,
+        marginBottom: 32,
+      });
     });
 
     mockNavigate.mockClear();
@@ -131,9 +171,10 @@ describe('CollectorHomeScreen', () => {
 
     await waitFor(() => {
       expect(queryByText('AVAILABLE BALANCE')).toBeNull();
-      expect(queryByText('REDEEM')).toBeNull();
+      expect(queryByText('Redeem')).toBeNull();
       expect(getByText('EcoSort')).toBeTruthy();
       expect(getByTestId('profile-notification-button')).toBeTruthy();
+      expect(getByTestId('collector-screen-content')).toHaveStyle({ backgroundColor: '#ffffff' });
       expect(queryByText('Profile')).toBeTruthy();
       expect(queryByText('Senior Collector')).toBeNull();
       expect(queryByText('Compactor Truck')).toBeNull();
@@ -151,5 +192,32 @@ describe('CollectorHomeScreen', () => {
 
     fireEvent.press(getByText('Log Out'));
     expect(logoutMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('renders full route map pins inside non-clipping marker bounds', async () => {
+    (usePickupStore as any).mockReturnValue({
+      requests: mockRoutePickups,
+      fetchPendingRequests: jest.fn(),
+      fetchAssignedRequests: jest.fn(),
+      acceptRequest: jest.fn(),
+      loading: false,
+      reorderRequests: jest.fn(),
+    });
+
+    const { getByText, getAllByTestId, getByTestId } = render(<CollectorHomeScreen />);
+
+    fireEvent.press(getByText('Route'));
+
+    await waitFor(() => {
+      expect(getByTestId('map-view')).toBeTruthy();
+      expect(getByTestId('route-map-marker-1')).toBeTruthy();
+      expect(getByTestId('route-map-marker-2')).toBeTruthy();
+    });
+
+    expect(getAllByTestId('map-marker')).toHaveLength(2);
+    expect(getByTestId('route-map-marker-1')).toHaveStyle({ width: 32, height: 32 });
+    expect(getByTestId('route-map-pin-1')).toHaveStyle({ width: 32, height: 32 });
+    expect(getByTestId('route-map-marker-2')).toHaveStyle({ width: 32, height: 32 });
+    expect(getByTestId('route-map-pin-2')).toHaveStyle({ width: 32, height: 32 });
   });
 });

@@ -55,8 +55,10 @@ export const PrivacyScreen = () => {
   ];
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: '#f8f9ff' }]} edges={['top', 'left', 'right']}>
-      <StatusBar barStyle="dark-content" backgroundColor="#f8f9ff" />
+    <View style={[styles.container, { backgroundColor: '#006948' }]}>
+      <StatusBar barStyle="light-content" backgroundColor="#006948" />
+      <SafeAreaView style={{ flex: 1, backgroundColor: '#006948' }} edges={['top', 'left', 'right']}>
+        <View style={{ flex: 1, backgroundColor: '#ffffff' }}>
       
       {/* Header */}
       <View style={styles.header}>
@@ -105,7 +107,9 @@ export const PrivacyScreen = () => {
           <Text style={styles.versionText}>Version 1.0.0 • Last updated May 2026</Text>
         </View>
       </ScrollView>
+        </View>
     </SafeAreaView>
+    </View>
   );
 };
 

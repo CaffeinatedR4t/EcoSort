@@ -14,12 +14,15 @@ import {
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Logo } from '../../components/Logo';
+import { ProfileAvatar } from '../../components/ProfileAvatar';
 import { spacing } from '../../services/theme/spacing';
 import { useAdminStore } from '../../store/adminStore';
 import { useAuthStore } from '../../store/authStore';
+import { useNotificationStore } from '../../store/notificationStore';
 import { useNavigation } from '@react-navigation/native';
 import {
   BarChart3,
+  Bell,
   CheckCircle,
   ChevronRight,
   Clock,
@@ -30,7 +33,6 @@ import {
   PackageCheck,
   Recycle,
   Scale,
-  Settings,
   ShieldCheck,
   Truck,
   UserCircle,
@@ -199,6 +201,7 @@ const AdminProfileAction = ({
 
 export const AdminHomeScreen = () => {
   const { user, logout } = useAuthStore();
+  const { unreadCount, fetchNotifications } = useNotificationStore();
   const navigation = useNavigation<any>();
   const {
     overviewMetrics,
@@ -222,6 +225,12 @@ export const AdminHomeScreen = () => {
   const [refreshing, setRefreshing] = useState(false);
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
+
+  useEffect(() => {
+    if (user?.id) {
+      fetchNotifications(user.id);
+    }
+  }, [user?.id]);
 
   useEffect(() => {
     if (activeTab === 'overview') {
@@ -292,7 +301,7 @@ export const AdminHomeScreen = () => {
               value={formatWeight(overviewMetrics.collectedWeightToday)}
               subtitle="Verified by collectors"
               Icon={Scale}
-              accent="#825100"
+              accent="#006948"
             />
           </View>
 
@@ -364,7 +373,7 @@ export const AdminHomeScreen = () => {
     <View key={withdrawal.id} style={styles.requestCard}>
       <View style={styles.requestMain}>
         <View style={[styles.requestAvatar, { backgroundColor: '#eef4ff' }]}>
-          <CreditCard color="#00668a" size={22} />
+          <CreditCard color="#006948" size={22} />
         </View>
         <View style={styles.requestTextGroup}>
           <Text style={styles.requestName}>{withdrawal.users?.name || withdrawal.account_holder_name || withdrawal.user_id || 'Unknown user'}</Text>
@@ -417,7 +426,7 @@ export const AdminHomeScreen = () => {
         <>
           <View style={styles.earningsMetricsGrid}>
             <EarningsMetricCard label="Total Pending Rewards" value={`Rp ${pendingRewardTotal.toLocaleString()}`} />
-            <EarningsMetricCard label="Pending Requests" value={pendingRewards.length.toLocaleString()} accent="#825100" />
+            <EarningsMetricCard label="Pending Requests" value={pendingRewards.length.toLocaleString()} accent="#006948" />
           </View>
           <Text style={styles.sectionTitle}>Pending Approvals</Text>
           {loading && !refreshing ? (
@@ -435,7 +444,7 @@ export const AdminHomeScreen = () => {
         <>
           <View style={styles.earningsMetricsGrid}>
             <EarningsMetricCard label="Total Amount to Disburse" value={`Rp ${pendingWithdrawalTotal.toLocaleString()}`} />
-            <EarningsMetricCard label="Pending Requests" value={pendingWithdrawals.length.toLocaleString()} accent="#ba1a1a" />
+            <EarningsMetricCard label="Pending Requests" value={pendingWithdrawals.length.toLocaleString()} accent="#006948" />
           </View>
           <Text style={styles.sectionTitle}>Withdrawal Requests</Text>
           {loading && !refreshing ? (
@@ -454,19 +463,19 @@ export const AdminHomeScreen = () => {
   );
 
   const renderProfile = () => (
-    <>
-      <View style={styles.profileCard}>
-        <View style={styles.profileAvatarWrapper}>
-          <UserCircle color="#006948" size={78} strokeWidth={1.2} />
-          <View style={styles.profileStatusDot} />
+      <>
+        <View style={styles.profileCard}>
+          <View style={styles.profileAvatarWrapper}>
+            <ProfileAvatar
+              name={user?.name}
+              avatarUrl={user?.avatar_url}
+              size={92}
+              fallback="A"
+            />
+          </View>
+          <Text style={styles.profileName}>{user?.name || 'Admin'}</Text>
+          <Text style={styles.profileId}>{adminRoleLabel} • Admin ID {adminId}</Text>
         </View>
-        <Text style={styles.profileName}>{user?.name || 'Admin'}</Text>
-        <View style={styles.profileRoleBadge}>
-          <ShieldCheck color="#006948" size={16} />
-          <Text style={styles.profileRoleText}>{adminRoleLabel}</Text>
-        </View>
-        <Text style={styles.profileId}>Admin ID: {adminId}</Text>
-      </View>
 
       <View style={styles.profileSummaryCard}>
         <View style={styles.profileSummaryHeader}>
@@ -499,14 +508,6 @@ export const AdminHomeScreen = () => {
 
       <View style={styles.profileActionsCard}>
         <AdminProfileAction
-          label="Settings"
-          description="App preferences and notifications"
-          Icon={Settings}
-          iconColor="#00668a"
-          iconBackground="#e0f2fe"
-           onPress={() => navigation.navigate('AdminSettings')}
-        />
-        <AdminProfileAction
           label="Account Settings"
           description="Password, security and roles"
           Icon={UserCircle}
@@ -518,22 +519,26 @@ export const AdminHomeScreen = () => {
           label="Help & Support"
           description="Admin help center and support"
           Icon={HelpCircle}
-          iconColor="#475569"
+          iconColor="#006948"
           iconBackground="#f1f5f9"
           onPress={() => navigation.navigate('AdminHelpSupport')}
         />
-      </View>
 
-      <TouchableOpacity
-        activeOpacity={0.78}
-        accessibilityRole="button"
-        accessibilityLabel="Log out"
-        style={styles.logoutButton}
-        onPress={logout}
-      >
-        <LogOut color="#ba1a1a" size={21} strokeWidth={2.3} />
-        <Text style={styles.logoutButtonText}>Log Out</Text>
-      </TouchableOpacity>
+        <TouchableOpacity
+          activeOpacity={0.78}
+          accessibilityRole="button"
+          accessibilityLabel="Log out"
+          style={[styles.profileActionRow, styles.profileActionRowDanger]}
+          onPress={logout}
+        >
+          <View style={[styles.profileActionIcon, { backgroundColor: '#ffdad6' }]}>
+            <LogOut color="#ba1a1a" size={20} strokeWidth={2.3} />
+          </View>
+          <View style={styles.profileActionTextGroup}>
+            <Text style={[styles.profileActionLabel, styles.profileActionLabelDanger]}>Log Out</Text>
+          </View>
+        </TouchableOpacity>
+      </View>
     </>
   );
 
@@ -541,38 +546,42 @@ export const AdminHomeScreen = () => {
     <View style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#006948" />
 
-      {/* Decorative Background Element */}
-      <View style={[
-        styles.bgCircle, 
-        { 
-          backgroundColor: '#e0f2f1',
-          top: -width * 0.4,
-          left: -width * 0.2,
-          width: width * 1.5,
-          height: width * 1.5,
-          borderRadius: (width * 1.5) / 2,
-        }
-      ]} />
-
       <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
         <View style={styles.content}>
-          <View style={styles.topbar}>
-            <View style={styles.logoGroup}>
-              <View style={styles.logoPositioner}>
-                <Logo size={32} />
-              </View>
-              <Text style={styles.logoText}>Admin Panel</Text>
-            </View>
-          </View>
-
           <ScrollView
             showsVerticalScrollIndicator={false}
-            contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 104 }]}
+            contentContainerStyle={{ paddingBottom: insets.bottom + 104 }}
             refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
           >
-            {activeTab === 'overview' && renderOverview()}
-            {activeTab === 'earnings' && renderEarnings()}
-            {activeTab === 'profile' && renderProfile()}
+            <View style={styles.topbar}>
+              <View style={styles.logoGroup}>
+                <View style={styles.logoPositioner}>
+                  <Logo size={32} />
+                </View>
+                <Text style={styles.logoText}>Admin Panel</Text>
+              </View>
+              <TouchableOpacity
+                testID="admin-notification-button"
+                accessibilityRole="button"
+                accessibilityLabel="Notifications"
+                activeOpacity={0.82}
+                style={[styles.iconButton, { backgroundColor: '#fff' }]}
+                onPress={() => navigation.navigate('Notification')}
+              >
+                <Bell color="#006948" size={22} />
+                {unreadCount > 0 && (
+                  <View style={styles.badgeContainer}>
+                    <Text style={styles.badgeTextCount}>{unreadCount > 9 ? '9+' : unreadCount}</Text>
+                  </View>
+                )}
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.scrollContent}>
+              {activeTab === 'overview' && renderOverview()}
+              {activeTab === 'earnings' && renderEarnings()}
+              {activeTab === 'profile' && renderProfile()}
+            </View>
           </ScrollView>
         </View>
       </SafeAreaView>
@@ -609,11 +618,12 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-    backgroundColor: '#f8fafc',
+    backgroundColor: '#ffffff',
   },
   topbar: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     paddingHorizontal: spacing.lg,
     paddingTop: spacing.md,
     paddingBottom: spacing.lg,
@@ -637,6 +647,44 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: '#006948',
     letterSpacing: -0.5,
+  },
+  iconButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+    position: 'relative',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 3,
+      },
+    }),
+  },
+  badgeContainer: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    backgroundColor: '#ba1a1a',
+    minWidth: 16,
+    height: 16,
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 4,
+    borderWidth: 1.5,
+    borderColor: '#fff',
+  },
+  badgeTextCount: {
+    color: '#fff',
+    fontSize: 9,
+    fontWeight: '800',
   },
   scrollContent: {
     paddingHorizontal: spacing.lg,
@@ -690,7 +738,7 @@ const styles = StyleSheet.create({
   statIcon: {
     width: 44,
     height: 44,
-    borderRadius: 22,
+    borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -763,7 +811,7 @@ const styles = StyleSheet.create({
   feedIcon: {
     width: 44,
     height: 44,
-    borderRadius: 22,
+    borderRadius: 14,
     backgroundColor: '#eef4ff',
     alignItems: 'center',
     justifyContent: 'center',
@@ -876,7 +924,7 @@ const styles = StyleSheet.create({
   requestAvatar: {
     width: 52,
     height: 52,
-    borderRadius: 26,
+    borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -966,61 +1014,35 @@ const styles = StyleSheet.create({
     padding: spacing.xl,
     alignItems: 'center',
     marginBottom: spacing.lg,
+    marginTop: 40,
     ...cardShadow,
   },
   profileAvatarWrapper: {
-    width: 108,
-    height: 108,
-    borderRadius: 54,
+    width: 100,
+    height: 100,
+    borderRadius: 28,
     backgroundColor: '#e6f4f0',
     borderWidth: 4,
     borderColor: '#fff',
     alignItems: 'center',
     justifyContent: 'center',
+    marginTop: -70,
     marginBottom: spacing.md,
   },
-  profileStatusDot: {
-    position: 'absolute',
-    right: 8,
-    bottom: 8,
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-    backgroundColor: '#006948',
-    borderWidth: 3,
-    borderColor: '#fff',
-  },
   profileName: {
-    fontSize: 26,
-    lineHeight: 34,
+    fontSize: 24,
+    lineHeight: 30,
     fontWeight: '800',
     color: '#121c28',
     textAlign: 'center',
   },
-  profileRoleBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-    backgroundColor: '#e6f4f0',
-    borderRadius: 999,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    marginTop: spacing.sm,
-  },
-  profileRoleText: {
-    fontSize: 12,
-    lineHeight: 16,
-    fontWeight: '800',
-    color: '#006948',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
   profileId: {
-    marginTop: spacing.sm,
-    fontSize: 13,
-    lineHeight: 18,
-    fontWeight: '700',
-    color: '#6d7a72',
+    marginTop: 4,
+    fontSize: 14,
+    lineHeight: 20,
+    fontWeight: '500',
+    color: '#757575',
+    textAlign: 'center',
   },
   profileSummaryCard: {
     backgroundColor: '#006948',
@@ -1129,7 +1151,7 @@ const styles = StyleSheet.create({
   profileActionIcon: {
     width: 44,
     height: 44,
-    borderRadius: 22,
+    borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: spacing.md,
@@ -1152,35 +1174,6 @@ const styles = StyleSheet.create({
     lineHeight: 17,
     fontWeight: '500',
     color: '#3d4a42',
-  },
-  logoutButton: {
-    minHeight: 52,
-    borderRadius: 16,
-    borderWidth: 1.5,
-    borderColor: '#ffdad6',
-    backgroundColor: '#fff',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.sm,
-    marginBottom: spacing.lg,
-    ...Platform.select({
-      ios: {
-        shadowColor: '#ba1a1a',
-        shadowOffset: { width: 0, height: 5 },
-        shadowOpacity: 0.08,
-        shadowRadius: 10,
-      },
-      android: {
-        elevation: 3,
-      },
-    }),
-  },
-  logoutButtonText: {
-    color: '#ba1a1a',
-    fontSize: 16,
-    lineHeight: 22,
-    fontWeight: '800',
   },
   navContainer: {
     position: 'absolute',

@@ -4,16 +4,19 @@ import { fireEvent, render, waitFor } from '@testing-library/react-native';
 import { AdminHomeScreen } from '../AdminHomeScreen';
 import { useAdminStore } from '../../../store/adminStore';
 import { useAuthStore } from '../../../store/authStore';
+import { useNotificationStore } from '../../../store/notificationStore';
 
+const mockNavigate = jest.fn();
 jest.mock('@react-navigation/native', () => ({
   useNavigation: () => ({
-    navigate: jest.fn(),
+    navigate: mockNavigate,
     reset: jest.fn(),
   }),
 }));
 
 jest.mock('../../../store/adminStore');
 jest.mock('../../../store/authStore');
+jest.mock('../../../store/notificationStore');
 
 jest.mock('../../../components/Logo', () => ({
   Logo: () => null,
@@ -21,6 +24,7 @@ jest.mock('../../../components/Logo', () => ({
 
 jest.mock('lucide-react-native', () => ({
   BarChart3: 'BarChart3Icon',
+  Bell: 'BellIcon',
   CheckCircle: 'CheckCircleIcon',
   ChevronRight: 'ChevronRightIcon',
   Clock: 'ClockIcon',
@@ -57,6 +61,7 @@ describe('AdminHomeScreen', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    mockNavigate.mockClear();
 
     (useAdminStore as unknown as jest.Mock).mockReturnValue({
       pendingRewards: [],
@@ -116,13 +121,18 @@ describe('AdminHomeScreen', () => {
       user: { id: 'admin-1', name: 'Admin User', role: 'admin' },
       logout,
     });
+    (useNotificationStore as unknown as jest.Mock).mockReturnValue({
+      unreadCount: 2,
+      fetchNotifications: jest.fn(),
+    });
   });
 
-  it('renders the admin overview shell and live metrics without a notification action', async () => {
-    const { getByText, queryByTestId } = render(<AdminHomeScreen />);
+  it('renders the admin overview shell and live metrics with notification action', async () => {
+    const { getByText, getByTestId } = render(<AdminHomeScreen />);
 
     expect(getByText('Admin Panel')).toBeTruthy();
-    expect(queryByTestId('admin-notification-button')).toBeNull();
+    expect(getByTestId('admin-notification-button')).toBeTruthy();
+    expect(getByText('2')).toBeTruthy();
     expect(getByText("Today's Overview")).toBeTruthy();
     expect(getByText('Active Pickups')).toBeTruthy();
     expect(getByText('4')).toBeTruthy();
@@ -134,6 +144,19 @@ describe('AdminHomeScreen', () => {
     expect(getByText('Pickup completed')).toBeTruthy();
 
     await waitFor(() => expect(fetchOverviewData).toHaveBeenCalledTimes(1));
+  });
+
+  it('keeps the notification action available across admin tabs', () => {
+    const { getByTestId } = render(<AdminHomeScreen />);
+
+    fireEvent.press(getByTestId('admin-notification-button'));
+    expect(mockNavigate).toHaveBeenCalledWith('Notification');
+
+    fireEvent.press(getByTestId('admin-nav-earnings'));
+    expect(getByTestId('admin-notification-button')).toBeTruthy();
+
+    fireEvent.press(getByTestId('admin-nav-profile'));
+    expect(getByTestId('admin-notification-button')).toBeTruthy();
   });
 
   it('shows three enabled admin nav items and switches to Earnings', async () => {
@@ -190,11 +213,10 @@ describe('AdminHomeScreen', () => {
     fireEvent.press(getByTestId('admin-nav-profile'));
 
     expect(getByText('Admin User')).toBeTruthy();
-    expect(getByText('Admin')).toBeTruthy();
+    expect(getByText(/Admin • Admin ID/)).toBeTruthy();
     expect(getByText('7')).toBeTruthy();
     expect(getByText('21')).toBeTruthy();
     expect(getByText('6')).toBeTruthy();
-    expect(getByText('Settings')).toBeTruthy();
     expect(getByText('Account Settings')).toBeTruthy();
     expect(getByText('Help & Support')).toBeTruthy();
     expect(getByText('Log Out')).toBeTruthy();

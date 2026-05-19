@@ -94,7 +94,7 @@ export const LoginScreen = () => {
               { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }
             ]}>
               <View style={styles.brandGroup}>
-                <Logo size={70} style={styles.logo} />
+                <Logo size={70} style={styles.logo} color={null} />
                 <Text style={styles.brandText}>EcoSort</Text>
               </View>
 

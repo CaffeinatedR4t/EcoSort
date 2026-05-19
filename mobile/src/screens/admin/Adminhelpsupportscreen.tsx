@@ -214,9 +214,10 @@ export const AdminHelpSupportScreen = () => {
   };
 
   return (
-    <View style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#ffffff" />
-      <SafeAreaView style={{ flex: 1 }} edges={['top', 'left', 'right']}>
+    <View style={[styles.container, { backgroundColor: '#006948' }]}>
+      <StatusBar barStyle="light-content" backgroundColor="#006948" />
+      <SafeAreaView style={{ flex: 1, backgroundColor: '#006948' }} edges={['top', 'left', 'right']}>
+        <View style={styles.contentShell}>
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity
@@ -292,37 +293,7 @@ export const AdminHelpSupportScreen = () => {
             </View>
           </View>
 
-          {/* Contact */}
-          {search === '' && (
-            <>
-              <Text style={styles.sectionHeader}>Contact Technical Support</Text>
-              <View style={styles.contactRow}>
-                <TouchableOpacity
-                  style={styles.contactCard}
-                  activeOpacity={0.75}
-                  onPress={() => Alert.alert('Admin Support', 'Connecting to priority support line...')}
-                >
-                  <View style={[styles.contactIcon, { backgroundColor: '#dbeafe' }]}>
-                    <MessageCircle color="#1d4ed8" size={20} />
-                  </View>
-                  <Text style={styles.contactLabel}>Priority Chat</Text>
-                  <Text style={styles.contactSub}>Admin support line</Text>
-                </TouchableOpacity>
 
-                <TouchableOpacity
-                  style={styles.contactCard}
-                  activeOpacity={0.75}
-                  onPress={() => Linking.openURL('mailto:admin@ecosort.id')}
-                >
-                  <View style={[styles.contactIcon, { backgroundColor: '#e0f2f1' }]}>
-                    <Mail color="#006948" size={20} />
-                  </View>
-                  <Text style={styles.contactLabel}>Email Team</Text>
-                  <Text style={styles.contactSub}>admin@ecosort.id</Text>
-                </TouchableOpacity>
-              </View>
-            </>
-          )}
 
           {/* FAQ */}
           <Text style={styles.sectionHeader}>
@@ -347,79 +318,7 @@ export const AdminHelpSupportScreen = () => {
             )}
           </View>
 
-          {/* Send message */}
-          {search === '' && (
-            <>
-              <Text style={styles.sectionHeader}>Send a Message</Text>
-              <View style={styles.ticketCard}>
-                {sent ? (
-                  <View style={styles.sentBox}>
-                    <View style={styles.sentIcon}>
-                      <CheckCircle2 color="#006948" size={28} />
-                    </View>
-                    <Text style={styles.sentTitle}>Message Sent!</Text>
-                    <Text style={styles.sentSub}>
-                      The technical team will respond within 4 business hours.
-                    </Text>
-                  </View>
-                ) : (
-                  <>
-                    <Text style={styles.fieldLabel}>TOPIC</Text>
-                    <View style={styles.topicRow}>
-                      {TOPICS.map((t) => (
-                        <TouchableOpacity
-                          key={t}
-                          onPress={() => setTopic(t)}
-                          style={[
-                            styles.topicChip,
-                            topic === t && styles.topicChipActive,
-                          ]}
-                        >
-                          <Text
-                            style={[
-                              styles.topicChipText,
-                              topic === t && styles.topicChipTextActive,
-                            ]}
-                          >
-                            {t.charAt(0).toUpperCase() + t.slice(1)}
-                          </Text>
-                        </TouchableOpacity>
-                      ))}
-                    </View>
 
-                    <Text style={[styles.fieldLabel, { marginTop: 14 }]}>
-                      YOUR MESSAGE
-                    </Text>
-                    <TextInput
-                      value={message}
-                      onChangeText={setMessage}
-                      placeholder="Describe the issue in detail..."
-                      placeholderTextColor="#94a3b8"
-                      multiline
-                      numberOfLines={4}
-                      textAlignVertical="top"
-                      style={styles.messageInput}
-                    />
-
-                    <TouchableOpacity
-                      onPress={handleSend}
-                      disabled={!message.trim() || sending}
-                      style={[
-                        styles.sendBtn,
-                        (!message.trim() || sending) && styles.sendBtnDisabled,
-                      ]}
-                      activeOpacity={0.8}
-                    >
-                      <Send color="#ffffff" size={16} />
-                      <Text style={styles.sendBtnText}>
-                        {sending ? 'Sending...' : 'Send Message'}
-                      </Text>
-                    </TouchableOpacity>
-                  </>
-                )}
-              </View>
-            </>
-          )}
 
           <Text style={styles.footer}>
             EcoSort Admin v1.0.0 • admin@ecosort.id
@@ -427,6 +326,7 @@ export const AdminHelpSupportScreen = () => {
 
           <View style={{ height: 40 }} />
         </ScrollView>
+        </View>
       </SafeAreaView>
     </View>
   );
@@ -434,6 +334,7 @@ export const AdminHelpSupportScreen = () => {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#f8fafc' },
+  contentShell: { flex: 1, backgroundColor: '#f8fafc' },
   header: {
     flexDirection: 'row',
     alignItems: 'center',

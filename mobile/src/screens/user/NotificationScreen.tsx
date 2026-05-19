@@ -57,9 +57,9 @@ export const NotificationScreen = () => {
 
   const getIcon = (type: string) => {
     switch(type) {
-      case 'reward': return <Wallet color="#059669" size={20} />;
-      case 'pickup': return <Truck color="#2563eb" size={20} />;
-      default: return <Bell color="#64748b" size={20} />;
+      case 'reward': return <Wallet color="#006948" size={20} />;
+      case 'pickup': return <Truck color="#006948" size={20} />;
+      default: return <Bell color="#006948" size={20} />;
     }
   };
 
@@ -133,7 +133,7 @@ export const NotificationScreen = () => {
           }
         />
       )}
-    </SafeAreaView>
+      </SafeAreaView>
   );
 };
 
@@ -153,7 +153,7 @@ const styles = StyleSheet.create({
   backBtn: {
     width: 44,
     height: 44,
-    borderRadius: 22,
+    borderRadius: 14,
     backgroundColor: '#f8fafc',
     justifyContent: 'center',
     alignItems: 'center',

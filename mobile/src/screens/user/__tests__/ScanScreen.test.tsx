@@ -53,11 +53,18 @@ describe('ScanScreen', () => {
       </NavigationContainer>
     );
 
-    expect(getByText('AI Scan')).toBeTruthy();
+    expect(getByText('AI Vision')).toBeTruthy();
     expect(getByText('Barcode')).toBeTruthy();
   });
 
-  it('renders "Request Pickup" button disabled when cart is empty', () => {
+  it('renders "Request Pickup" button when cart has items', () => {
+    (usePickupStore as any).mockReturnValue({
+      cart: [{ id: '1', type: 'Plastic', weight: 1, unit: 'kg' }],
+      addToCart: jest.fn(),
+      removeFromCart: jest.fn(),
+      clearCart: jest.fn(),
+    });
+
     const { getByText } = render(
       <NavigationContainer>
         <ScanScreen />

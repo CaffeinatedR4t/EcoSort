@@ -12,6 +12,7 @@ import {
   ActivityIndicator,
   Animated,
   useWindowDimensions,
+  ImageBackground,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -21,6 +22,7 @@ import { colors } from '../../services/theme/colors';
 import { spacing } from '../../services/theme/spacing';
 import { Card } from '../../components/Card';
 import { Logo } from '../../components/Logo';
+import { ProfileAvatar } from '../../components/ProfileAvatar';
 import { useAuthStore } from '../../store/authStore';
 import { usePickupStore } from '../../store/pickupStore';
 import { useNotificationStore } from '../../store/notificationStore';
@@ -48,6 +50,7 @@ import {
   CircleCheckBig,
   ScanLine,
   ChevronDown,
+  ArrowUpRight,
 } from 'lucide-react-native';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -74,10 +77,10 @@ interface DriverStats {
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 const getJobAccentColor = (hint: string = '') => {
   const h = hint.toLowerCase();
-  if (h.includes('metal'))                             return '#b45309';
-  if (h.includes('paper') || h.includes('cardboard')) return '#b45309';
-  if (h.includes('organic'))                           return '#65a30d';
-  if (h.includes('plastic'))                           return '#0284c7';
+  if (h.includes('metal'))                             return '#2e7d32'; // Dark Forest Green
+  if (h.includes('paper') || h.includes('cardboard')) return '#558b2f'; // Olive Green
+  if (h.includes('organic'))                           return '#166534'; // Standard Green
+  if (h.includes('plastic'))                           return '#006948'; // Brand Green
   return '#006948';
 };
 
@@ -89,24 +92,52 @@ const getJobTypeLabel = (hint: string = '') => {
 
 const getWasteTypeBadgeColor = (type: string) => {
   switch (type.toLowerCase()) {
-    case 'plastic': return { bg: '#dbeafe', text: '#1d4ed8' };
-    case 'paper':   return { bg: '#fef3c7', text: '#92400e' };
-    case 'metal':   return { bg: '#f3f4f6', text: '#374151' };
-    case 'organic': return { bg: '#dcfce7', text: '#166534' };
-    case 'glass':   return { bg: '#cffafe', text: '#155e75' };
-    default:        return { bg: '#f1f5f9', text: '#475569' };
+    case 'plastic': return { bg: '#e0f2f1', text: '#006948' }; // Teal-ish Green
+    case 'paper':   return { bg: '#f1f8e9', text: '#558b2f' }; // Light Lime
+    case 'metal':   return { bg: '#e8f5e9', text: '#2e7d32' }; // Forest Green
+    case 'organic': return { bg: '#dcfce7', text: '#166534' }; // Emerald Green
+    case 'glass':   return { bg: '#f9fbe7', text: '#827717' }; // Lime Green
+    default:        return { bg: '#f0f4f1', text: '#006948' }; // Default Light Green
   }
 };
 
 const formatRupiah = (amount: number = 0) => `Rp ${amount.toLocaleString('id-ID')}`;
 
+type BannerVariant = 'morning' | 'afternoon' | 'evening' | 'night';
+
+const bannerAssets: Record<BannerVariant, any> = {
+  morning: require('../../../assets/logo/gm (1).png'),
+  afternoon: require('../../../assets/logo/ga (1).png'),
+  evening: require('../../../assets/logo/ge (1).png'),
+  night: require('../../../assets/logo/gn (1).png'),
+};
+
+const getDriverBannerVariant = (hour = new Date().getHours()): BannerVariant => {
+  if (hour >= 5 && hour < 12) return 'morning';
+  if (hour >= 12 && hour < 17) return 'afternoon';
+  if (hour >= 17 && hour < 21) return 'evening';
+  return 'night';
+};
+
+const getDriverBannerGreeting = (hour = new Date().getHours(), name = 'Driver') => {
+  const variant = getDriverBannerVariant(hour);
+  const prefix = {
+    morning: 'Good morning',
+    afternoon: 'Good afternoon',
+    evening: 'Good evening',
+    night: 'Good night',
+  }[variant];
+
+  return `${prefix}, ${name}`;
+};
+
 const getTimelineDotColor = (type: string) => {
   switch (type.toLowerCase()) {
-    case 'plastic': return '#1d4ed8';
-    case 'paper':   return '#b45309';
-    case 'metal':   return '#374151';
+    case 'plastic': return '#006948';
+    case 'paper':   return '#558b2f';
+    case 'metal':   return '#2e7d32';
     case 'organic': return '#166534';
-    case 'glass':   return '#155e75';
+    case 'glass':   return '#827717';
     default:        return '#006948';
   }
 };
@@ -273,6 +304,8 @@ const ProfileTab = ({
   const driverId = user?.id
     ? 'ECO-' + user.id.replace(/-/g, '').slice(0, 4).toUpperCase()
     : 'ECO-0000';
+  const vehicleType = user?.vehicle_type;
+  const vehiclePlate = user?.vehicle_plate;
 
   return (
     <ScrollView
@@ -286,7 +319,12 @@ const ProfileTab = ({
       {header}
       <View style={profileStyles.profileCard}>
         <View style={profileStyles.avatarWrapper}>
-          <UserCircle color="#fff" size={80} strokeWidth={1} />
+          <ProfileAvatar
+            name={user?.name}
+            avatarUrl={user?.avatar_url}
+            size={92}
+            fallback="D"
+          />
         </View>
         <Text style={profileStyles.userName}>{user?.name || 'Collector'}</Text>
         <Text style={profileStyles.userTitle}>Eco Collector • Driver ID {driverId}</Text>
@@ -309,7 +347,7 @@ const ProfileTab = ({
           <Text style={profileStyles.smallStatLabel}>JOBS</Text>
         </Card>
         <Card style={profileStyles.smallStatCard}>
-          <Award color="#a36700" size={24} style={profileStyles.statIcon} />
+          <Award color="#006948" size={24} style={profileStyles.statIcon} />
           <Text style={profileStyles.smallStatValue}>{formatRupiah(stats.completedEarnings)}</Text>
           <Text style={profileStyles.smallStatLabel}>EARNINGS</Text>
         </Card>
@@ -317,12 +355,19 @@ const ProfileTab = ({
 
       <Card style={profileStyles.vehicleCard}>
         <View style={profileStyles.sectionHeader}>
-          <View style={[profileStyles.sectionIconBox, { backgroundColor: '#e0f0ff' }]}>
-            <Truck color="#0284c7" size={20} />
+          <View style={profileStyles.sectionIconBox}>
+            <Truck color="#006948" size={20} />
           </View>
           <Text style={profileStyles.sectionTitle}>Vehicle Info</Text>
         </View>
-        <Text style={profileStyles.emptyVehicleText}>Vehicle details not configured</Text>
+        {vehicleType || vehiclePlate ? (
+          <View style={profileStyles.vehicleDetails}>
+            <Text style={profileStyles.vehicleValue}>{vehicleType || 'Vehicle type not set'}</Text>
+            <Text style={profileStyles.vehicleMeta}>{vehiclePlate || 'License plate not set'}</Text>
+          </View>
+        ) : (
+          <Text style={profileStyles.emptyVehicleText}>Vehicle details not configured</Text>
+        )}
       </Card>
 
       <Card style={profileStyles.menuCard}>
@@ -331,8 +376,8 @@ const ProfileTab = ({
           style={profileStyles.menuItem}
           onPress={() => navigation.navigate('AccountSettings')}
         >
-          <View style={[profileStyles.menuIconBox, { backgroundColor: '#e0f2fe' }]}>
-            <UserCircle color="#0284c7" size={20} />
+          <View style={[profileStyles.menuIconBox, { backgroundColor: '#e6f4f0' }]}>
+            <UserCircle color="#006948" size={20} />
           </View>
           <Text style={profileStyles.menuText}>Account Settings</Text>
           <ChevronRight color="#9ca3af" size={20} />
@@ -344,17 +389,17 @@ const ProfileTab = ({
           onPress={() => navigation.navigate('HelpSupport')}
         >
           <View style={[profileStyles.menuIconBox, { backgroundColor: '#f1f5f9' }]}>
-            <HelpCircle color="#475569" size={20} />
+            <HelpCircle color="#006948" size={20} />
           </View>
           <Text style={profileStyles.menuText}>Help & Support</Text>
           <ChevronRight color="#9ca3af" size={20} />
         </TouchableOpacity>
 
         <TouchableOpacity style={[profileStyles.menuItem, { borderBottomWidth: 0 }]} onPress={logout}>
-          <View style={[profileStyles.menuIconBox, { backgroundColor: '#ffe4e6' }]}>
-            <LogOut color="#e11d48" size={20} />
+          <View style={[profileStyles.menuIconBox, { backgroundColor: '#ffdad6' }]}>
+            <LogOut color="#ba1a1a" size={20} />
           </View>
-          <Text style={[profileStyles.menuText, { color: '#e11d48' }]}>Log Out</Text>
+          <Text style={[profileStyles.menuText, { color: '#ba1a1a' }]}>Log Out</Text>
         </TouchableOpacity>
       </Card>
     </ScrollView>
@@ -362,7 +407,7 @@ const ProfileTab = ({
 };
 
 const profileStyles = StyleSheet.create({
-  scroll: { paddingHorizontal: spacing.lg, paddingTop: spacing.md },
+  scroll: { paddingHorizontal: spacing.lg, paddingTop: spacing.md, backgroundColor: '#ffffff' },
   profileCard: {
     backgroundColor: '#fff',
     borderRadius: 24,
@@ -378,14 +423,14 @@ const profileStyles = StyleSheet.create({
   avatarWrapper: {
     width: 100,
     height: 100,
-    borderRadius: 50,
-    backgroundColor: '#006948',
+    borderRadius: 28,
     justifyContent: 'center',
     alignItems: 'center',
     marginTop: -70,
     marginBottom: spacing.md,
     borderWidth: 4,
     borderColor: '#fff',
+    backgroundColor: '#e6f4f0',
   },
   userName: { fontSize: 24, fontWeight: '800', color: '#121c28', marginBottom: 4 },
   userTitle: { fontSize: 14, color: '#757575', fontWeight: '500', textAlign: 'center' },
@@ -425,9 +470,12 @@ const profileStyles = StyleSheet.create({
   smallStatLabel: { fontSize: 12, fontWeight: '700', color: '#757575', letterSpacing: 1 },
   vehicleCard: { backgroundColor: '#fff', borderRadius: 24, padding: spacing.lg, marginBottom: spacing.lg },
   sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: spacing.md },
-  sectionIconBox: { width: 40, height: 40, borderRadius: 12, justifyContent: 'center', alignItems: 'center' },
+  sectionIconBox: { width: 40, height: 40, borderRadius: 12, backgroundColor: '#e6f4f0', justifyContent: 'center', alignItems: 'center' },
   sectionTitle: { fontSize: 16, fontWeight: '700', color: '#0f172a' },
   emptyVehicleText: { fontSize: 14, color: '#64748b', fontWeight: '600' },
+  vehicleDetails: { gap: 4 },
+  vehicleValue: { fontSize: 16, color: '#121c28', fontWeight: '800' },
+  vehicleMeta: { fontSize: 13, color: '#64748b', fontWeight: '600' },
   menuCard: { backgroundColor: '#fff', borderRadius: 24, paddingHorizontal: spacing.lg },
   menuItem: {
     flexDirection: 'row',
@@ -439,7 +487,7 @@ const profileStyles = StyleSheet.create({
   menuIconBox: {
     width: 40,
     height: 40,
-    borderRadius: 20,
+    borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: spacing.md,
@@ -493,6 +541,12 @@ export const CollectorHomeScreen = () => {
         : tab === 'history'
           ? 'history-notification-button'
           : 'collector-notification-button';
+  const driverFirstName = user?.name?.split(' ')[0] || 'Driver';
+  const bannerVariant = getDriverBannerVariant();
+  const [bannerGreetingTop, bannerGreetingBottom] = getDriverBannerGreeting(
+    new Date().getHours(),
+    driverFirstName
+  ).split(', ');
 
   const renderHeader = () => (
     <View style={styles.header}>
@@ -698,39 +752,76 @@ export const CollectorHomeScreen = () => {
     <ScrollView
       style={{ flex: 1 }}
       contentContainerStyle={[
-        styles.scroll, 
+        styles.availableScroll,
         { paddingBottom: Platform.OS === 'ios' ? insets.bottom + 100 : 120 }
       ]}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       showsVerticalScrollIndicator={false}
     >
-      {renderHeader()}
-      <Text style={styles.greeting}>
-        Hello, {user?.name?.split(' ')[0] || 'Driver'}!
-      </Text>
+      <View testID="driver-home-header-shell" style={styles.homeHeaderShell}>
+        {renderHeader()}
+      </View>
 
-      <View style={styles.earningsCard}>
-        <View style={styles.earningsHeader}>
-          <View style={styles.earningsIconBox}>
-            <Wallet color="rgba(255,255,255,0.85)" size={20} />
+      <View style={styles.bannerSection}>
+        <ImageBackground
+          testID={`driver-home-banner-${bannerVariant}`}
+          source={bannerAssets[bannerVariant]}
+          style={styles.bannerImage}
+          imageStyle={styles.bannerImageAsset}
+          resizeMode="cover"
+        >
+          <View style={styles.bannerOverlay}>
+            <Text style={styles.bannerGreetingTop}>{bannerGreetingTop},</Text>
+            <Text style={styles.bannerGreetingBottom}>{bannerGreetingBottom}</Text>
           </View>
-          <Text style={styles.earningsLabel}>AVAILABLE BALANCE</Text>
-        </View>
-        <Text style={styles.earningsAmount}>{formatRupiah(user?.balance ?? 0)}</Text>
-        <View style={styles.walletActions}>
-          <TouchableOpacity
-            style={styles.walletActionBtn}
-            onPress={() => navigation.navigate('Withdrawal')}
-          >
-            <Text style={styles.walletActionText}>REDEEM</Text>
-          </TouchableOpacity>
+        </ImageBackground>
+      </View>
+
+      <View style={styles.walletSection}>
+        <View style={styles.walletCard}>
+          <View style={styles.walletRow}>
+            <View style={styles.walletIdentity}>
+              <View style={styles.walletLogoWrap}>
+                <Wallet color="#006948" size={20} />
+              </View>
+              <View style={styles.walletCopy}>
+                <Text style={styles.walletLabel}>Eco Coins</Text>
+                <Text style={styles.balanceText}>{formatRupiah(user?.balance ?? 0)}</Text>
+              </View>
+            </View>
+
+            <View style={styles.walletActions}>
+              <TouchableOpacity
+                style={styles.walletAction}
+                onPress={() => navigation.navigate('Withdrawal')}
+                activeOpacity={0.82}
+              >
+                <View style={styles.walletActionIcon}>
+                  <ArrowUpRight color="#006948" size={18} />
+                </View>
+                <Text style={styles.walletActionLabel}>Redeem</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                testID="driver-wallet-history-button"
+                style={styles.walletAction}
+                onPress={() => navigation.navigate('TransactionHistory')}
+                activeOpacity={0.82}
+              >
+                <View style={styles.walletActionIcon}>
+                  <History color="#006948" size={18} />
+                </View>
+                <Text style={styles.walletActionLabel}>History</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
         </View>
       </View>
 
       <View style={styles.statsRow}>
         <View style={styles.statBox}>
-          <View style={[styles.statIconCircle, { backgroundColor: '#dbeafe' }]}>
-            <CircleCheckBig color="#0284c7" size={22} />
+          <View testID="driver-finished-stat-icon" style={styles.statIconCircle}>
+            <CircleCheckBig color="#006948" size={22} />
           </View>
           <Text style={styles.statBoxLabel}>FINISHED</Text>
           <View style={styles.statValueRow}>
@@ -739,8 +830,8 @@ export const CollectorHomeScreen = () => {
           </View>
         </View>
         <View style={styles.statBox}>
-          <View style={[styles.statIconCircle, { backgroundColor: '#fef3c7' }]}>
-            <Hourglass color="#b45309" size={22} />
+          <View testID="driver-collected-stat-icon" style={styles.statIconCircle}>
+            <Hourglass color="#006948" size={22} />
           </View>
           <Text style={styles.statBoxLabel}>COLLECTED</Text>
           <View style={styles.statValueRow}>
@@ -751,6 +842,10 @@ export const CollectorHomeScreen = () => {
       </View>
 
       {/* Job Cards */}
+      <View style={styles.pickupSectionHeader}>
+        <Text style={styles.pickupSectionTitle}>Pickup Requests</Text>
+      </View>
+
       {requests.length > 0 ? (
         requests.map((item) => {
           const accentColor = getJobAccentColor(item.waste_hint ?? '');
@@ -816,7 +911,7 @@ export const CollectorHomeScreen = () => {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
         showsVerticalScrollIndicator={false}
       >
-        <View style={{ paddingHorizontal: spacing.lg }}>
+        <View testID="route-header-wrapper" style={styles.pageHeaderWrapper}>
           {renderHeader()}
         </View>
         
@@ -879,6 +974,7 @@ export const CollectorHomeScreen = () => {
                   zoomControlEnabled={true}
                   showsUserLocation={true}
                   showsMyLocationButton={true}
+                  mapPadding={{ top: 36, right: 24, bottom: 36, left: 24 }}
                 >
                   {/* Marker tiap pickup, warna & nomor berbeda per jenis sampah */}
                   {displayList.map((item, idx) => {
@@ -896,34 +992,20 @@ export const CollectorHomeScreen = () => {
                         title={`#${idx + 1} ${getJobTypeLabel(item.waste_hint ?? '')}`}
                         description={item.location.address}
                       >
-                        <View 
-                          style={{ 
-                            width: isFirst ? 60 : 48, 
-                            height: isFirst ? 60 : 48, 
-                            alignItems: 'center', 
-                            justifyContent: 'center', 
-                            backgroundColor: 'transparent' 
-                          }}
+                        <View
+                          testID={`route-map-marker-${idx + 1}`}
+                          collapsable={false}
+                          style={styles.mapMarkerContainer}
                         >
                           <View
-                            style={{
-                              width: isFirst ? 50 : 38,
-                              height: isFirst ? 50 : 38,
-                              borderRadius: isFirst ? 25 : 19,
-                              backgroundColor: isFirst ? '#006948' : accentHex,
-                              borderWidth: 3,
-                              borderColor: '#ffffff',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                            }}
+                            testID={`route-map-pin-${idx + 1}`}
+                            collapsable={false}
+                            style={[
+                              styles.mapMarker,
+                              { backgroundColor: isFirst ? '#006948' : accentHex },
+                            ]}
                           >
-                            <Text
-                              style={{
-                                color: '#ffffff',
-                                fontWeight: '900',
-                                fontSize: isFirst ? 20 : 16,
-                              }}
-                            >
+                            <Text style={styles.mapMarkerNumber}>
                               {idx + 1}
                             </Text>
                           </View>
@@ -1016,7 +1098,9 @@ export const CollectorHomeScreen = () => {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
         showsVerticalScrollIndicator={false}
       >
-        {renderHeader()}
+        <View testID="history-header-wrapper" style={styles.historyHeaderWrapper}>
+          {renderHeader()}
+        </View>
         <Text style={styles.historyPageTitle}>History</Text>
         <Text style={styles.historyPageSubtitle}>
           Review your past sorting deposits and environmental impact.
@@ -1095,28 +1179,14 @@ export const CollectorHomeScreen = () => {
   };
 
   // ─── Render ────────────────────────────────────────────────────────────────
-  const isProfile = tab === 'profile';
-  const screenBackground = isProfile ? '#EEF4FF' : '#f8f9ff';
+  const screenBackground = '#ffffff';
 
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#006948" />
 
-      {/* Decorative Background Element */}
-      <View style={[
-        styles.bgCircle, 
-        { 
-          backgroundColor: '#e0f2f1',
-          top: -width * 0.4,
-          left: -width * 0.2,
-          width: width * 1.5,
-          height: width * 1.5,
-          borderRadius: (width * 1.5) / 2,
-        }
-      ]} />
-
       <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
-        <View style={[styles.content, { backgroundColor: screenBackground }]}>
+        <View testID="collector-screen-content" style={[styles.content, { backgroundColor: screenBackground }]}>
           {tab === 'available' && renderRequestsTab()}
           {tab === 'active'    && renderActiveTab()}
           {tab === 'history'   && renderHistoryTab()}
@@ -1146,7 +1216,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: spacing.xl,
   },
   logoGroup: {
     flexDirection: 'row',
@@ -1170,7 +1239,7 @@ const styles = StyleSheet.create({
   iconButton: {
     width: 44,
     height: 44,
-    borderRadius: 22,
+    borderRadius: 14,
     justifyContent: 'center',
     alignItems: 'center',
     position: 'relative',
@@ -1190,7 +1259,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 8,
     right: 8,
-    backgroundColor: '#ff4444',
+    backgroundColor: '#ba1a1a',
     minWidth: 16,
     height: 16,
     borderRadius: 8,
@@ -1209,36 +1278,169 @@ const styles = StyleSheet.create({
     position: 'absolute',
     opacity: 0.5,
   },
-  scroll: { paddingHorizontal: spacing.lg, paddingTop: spacing.lg },
-  assignedScroll: { paddingTop: spacing.lg },
-  greeting: { fontSize: 28, fontWeight: '800', color: '#0f172a', marginBottom: spacing.lg },
-  earningsCard: {
-    backgroundColor: '#006948', borderRadius: 20, padding: spacing.xl, marginBottom: spacing.md,
+  scroll: { paddingHorizontal: spacing.lg, paddingTop: 0, backgroundColor: '#ffffff' },
+  availableScroll: { paddingTop: 0, backgroundColor: '#ffffff' },
+  assignedScroll: { paddingTop: 0, backgroundColor: '#ffffff' },
+  pageHeaderWrapper: {
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.md,
+    marginBottom: spacing.xl,
+  },
+  historyHeaderWrapper: {
+    paddingTop: spacing.md,
+    marginBottom: spacing.xl,
+  },
+  homeHeaderShell: {
+    backgroundColor: '#ffffff',
+    borderRadius: 28,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
+    marginHorizontal: spacing.lg,
+    marginTop: spacing.sm + 4,
+    marginBottom: 0,
+    overflow: 'hidden',
+    zIndex: 2,
     ...Platform.select({
-      ios: { shadowColor: '#006948', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.3, shadowRadius: 15 },
-      android: { elevation: 8 },
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.08,
+        shadowRadius: 14,
+      },
+      android: {
+        elevation: 3,
+      },
     }),
   },
-  earningsHeader: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: spacing.md },
-  earningsIconBox: {
-    width: 36, height: 36, borderRadius: 10,
-    backgroundColor: 'rgba(255,255,255,0.15)', justifyContent: 'center', alignItems: 'center',
+  bannerSection: {
+    height: 320,
+    marginTop: -92,
+    marginBottom: 0,
+    backgroundColor: '#d7edd8',
+    overflow: 'hidden',
+    zIndex: 0,
   },
-  earningsLabel: { fontSize: 14, color: 'rgba(255,255,255,0.85)', fontWeight: '600' },
-  earningsAmount: { fontSize: 36, fontWeight: '800', color: '#fff' },
-  walletActions: { flexDirection: 'row', gap: spacing.md, marginTop: spacing.lg },
-  walletActionBtn: {
+  bannerImage: {
+    width: '100%',
+    height: '100%',
+    justifyContent: 'flex-start',
+  },
+  bannerImageAsset: {
+    width: '100%',
+    height: '100%',
+  },
+  bannerOverlay: {
     flex: 1,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: 'rgba(255,255,255,0.15)',
+    paddingHorizontal: spacing.lg,
+    paddingTop: 150,
+    justifyContent: 'flex-start',
+  },
+  bannerGreetingTop: {
+    color: '#ffffff',
+    fontSize: 27,
+    fontWeight: '900',
+    lineHeight: 30,
+    maxWidth: '72%',
+    textShadowColor: 'rgba(0, 0, 0, 0.24)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
+  },
+  bannerGreetingBottom: {
+    color: '#ffffff',
+    fontSize: 30,
+    fontWeight: '900',
+    lineHeight: 34,
+    marginTop: -2,
+    maxWidth: '72%',
+    textShadowColor: 'rgba(0, 0, 0, 0.24)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
+  },
+  walletSection: {
+    marginHorizontal: spacing.lg,
+    marginTop: -45,
+    marginBottom: spacing.lg,
+    zIndex: 3,
+  },
+  walletCard: {
+    backgroundColor: '#ffffff',
+    borderRadius: 24,
+    paddingVertical: 8,
+    paddingHorizontal: spacing.md,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.25)',
+    borderColor: '#e8edf2',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.08,
+        shadowRadius: 16,
+      },
+      android: { elevation: 4 },
+    }),
+  },
+  walletRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: spacing.sm,
+  },
+  walletIdentity: {
+    flex: 1,
+    minWidth: 0,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  walletLogoWrap: {
+    width: 38,
+    height: 38,
+    borderRadius: 14,
+    backgroundColor: '#e0f2f1',
     justifyContent: 'center',
     alignItems: 'center',
   },
-  walletActionText: { color: '#fff', fontSize: 12, fontWeight: '800', letterSpacing: 1 },
-  statsRow: { flexDirection: 'row', gap: spacing.md, marginBottom: spacing.xl },
+  walletCopy: { flex: 1, minWidth: 0 },
+  walletLabel: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#64748b',
+    textTransform: 'uppercase',
+    letterSpacing: 1.1,
+    marginBottom: 2,
+  },
+  balanceText: {
+    color: '#121c28',
+    fontSize: 23,
+    fontWeight: '800',
+    lineHeight: 26,
+  },
+  walletActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    alignItems: 'flex-start',
+    gap: 6,
+  },
+  walletAction: {
+    alignItems: 'center',
+    justifyContent: 'flex-start',
+    gap: 2,
+    minWidth: 54,
+  },
+  walletActionIcon: {
+    width: 34,
+    height: 34,
+    borderRadius: 14,
+    backgroundColor: '#e0f2f1',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  walletActionLabel: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#121c28',
+  },
+  statsRow: { flexDirection: 'row', gap: spacing.md, marginHorizontal: spacing.lg, marginBottom: spacing.xl },
   statBox: {
     flex: 1, backgroundColor: '#fff', borderRadius: 16, padding: spacing.md, alignItems: 'center', gap: 6,
     ...Platform.select({
@@ -1246,13 +1448,15 @@ const styles = StyleSheet.create({
       android: { elevation: 2 },
     }),
   },
-  statIconCircle: { width: 44, height: 44, borderRadius: 22, justifyContent: 'center', alignItems: 'center', marginBottom: 4 },
+  statIconCircle: { width: 44, height: 44, borderRadius: 14, backgroundColor: '#e0f2f1', justifyContent: 'center', alignItems: 'center', marginBottom: 4 },
   statBoxLabel: { fontSize: 10, fontWeight: '700', color: '#94a3b8', letterSpacing: 1 },
   statValueRow: { flexDirection: 'row', alignItems: 'baseline' },
   statBoxValue: { fontSize: 28, fontWeight: '800', color: '#0f172a' },
   statBoxUnit: { fontSize: 14, fontWeight: '600', color: '#64748b' },
+  pickupSectionHeader: { marginHorizontal: spacing.lg, marginBottom: spacing.md },
+  pickupSectionTitle: { fontSize: 20, fontWeight: '800', color: '#121c28' },
   jobCard: {
-    flexDirection: 'row', backgroundColor: '#fff', borderRadius: 16, marginBottom: spacing.md, overflow: 'hidden',
+    flexDirection: 'row', backgroundColor: '#fff', borderRadius: 16, marginHorizontal: spacing.lg, marginBottom: spacing.md, overflow: 'hidden',
     ...Platform.select({
       ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 8 },
       android: { elevation: 3 },
@@ -1268,7 +1472,7 @@ const styles = StyleSheet.create({
   jobDistance: { fontSize: 12, color: '#94a3b8', fontWeight: '500' },
   jobAddressRow: {
     flexDirection: 'row', alignItems: 'center', gap: 6,
-    marginBottom: spacing.md, backgroundColor: '#f8fafc', borderRadius: 10, padding: spacing.sm,
+    marginBottom: spacing.md, backgroundColor: '#ffffff', borderRadius: 10, padding: spacing.sm,
   },
   jobAddressText: { flex: 1, fontSize: 14, color: '#334155', fontWeight: '500' },
   jobActions: { flexDirection: 'row', gap: spacing.sm },
@@ -1315,16 +1519,16 @@ const styles = StyleSheet.create({
   mapMarkerContainer: {
     alignItems: 'center',
     justifyContent: 'center',
-    width: 80,
-    height: 80,
+    width: 32,
+    height: 32,
     backgroundColor: 'transparent',
   },
   mapMarker: {
     alignItems: 'center',
     justifyContent: 'center',
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 32,
+    height: 32,
+    borderRadius: 10,
     borderWidth: 2,
     borderColor: '#fff',
     ...Platform.select({
@@ -1332,32 +1536,11 @@ const styles = StyleSheet.create({
       android: { elevation: 6 },
     }),
   },
-  mapMarkerFirst: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    borderWidth: 3,
-  },
-  mapMarkerTip: {
-    width: 0,
-    height: 0,
-    backgroundColor: 'transparent',
-    borderStyle: 'solid',
-    borderLeftWidth: 8,
-    borderRightWidth: 8,
-    borderTopWidth: 12,
-    borderLeftColor: 'transparent',
-    borderRightColor: 'transparent',
-    marginTop: -2, // overlap with circle to avoid gap
-  },
   mapMarkerNumber: {
-    fontSize: 16,
+    fontSize: 12,
     fontWeight: '800',
     color: '#fff',
     textAlign: 'center',
-  },
-  mapMarkerNumberFirst: {
-    fontSize: 22,
   },
   mapContainer: {
     height: 260, marginHorizontal: spacing.lg,
@@ -1379,9 +1562,9 @@ const styles = StyleSheet.create({
   },
   etaBadge: {
     flexDirection: 'row', alignItems: 'center', gap: 5,
-    backgroundColor: '#dbeafe', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20,
+    backgroundColor: '#e6f4f0', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20,
   },
-  etaText: { fontSize: 13, fontWeight: '600', color: '#1d4ed8' },
+  etaText: { fontSize: 13, fontWeight: '600', color: '#006948' },
   estValueLabel: { fontSize: 10, fontWeight: '700', color: '#94a3b8', letterSpacing: 1, textAlign: 'right' },
   estValueAmount: { fontSize: 18, fontWeight: '800', color: '#006948', textAlign: 'right' },
   assignedJobAddress: { fontSize: 22, fontWeight: '800', color: '#0f172a', marginBottom: spacing.sm },
@@ -1407,7 +1590,7 @@ const styles = StyleSheet.create({
     }),
   },
   nextStopNumber: {
-    width: 28, height: 28, borderRadius: 14,
+    width: 28, height: 28, borderRadius: 8,
     backgroundColor: '#e6f4f0', justifyContent: 'center', alignItems: 'center',
   },
   nextStopNumberText: { fontSize: 12, fontWeight: '800', color: '#006948' },
@@ -1419,7 +1602,7 @@ const styles = StyleSheet.create({
   timeline: { paddingLeft: 8 },
   timelineItem: { flexDirection: 'row', gap: 12, marginBottom: 0 },
   timelineDotCol: { alignItems: 'center', width: 20 },
-  timelineDot: { width: 12, height: 12, borderRadius: 6, marginTop: 16 },
+  timelineDot: { width: 12, height: 12, borderRadius: 4, marginTop: 16 },
   timelineLine: { width: 2, flex: 1, backgroundColor: '#e2e8f0', marginTop: 4 },
   historyCard: {
     flex: 1, backgroundColor: '#fff', borderRadius: 16, padding: spacing.lg, marginBottom: spacing.md,

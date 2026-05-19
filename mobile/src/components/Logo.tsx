@@ -5,9 +5,10 @@ interface LogoProps {
   size?: number;
   style?: StyleProp<ViewStyle>;
   imageStyle?: StyleProp<ImageStyle>;
+  color?: string | null;
 }
 
-export const Logo: React.FC<LogoProps> = ({ size = 100, style, imageStyle }) => {
+export const Logo: React.FC<LogoProps> = ({ size = 100, style, imageStyle, color = '#006948' }) => {
   return (
     <View style={[styles.container, style]}>
       <Image
@@ -16,6 +17,7 @@ export const Logo: React.FC<LogoProps> = ({ size = 100, style, imageStyle }) => 
           {
             width: size,
             height: size,
+            tintColor: color ?? undefined,
           },
           imageStyle,
         ]}

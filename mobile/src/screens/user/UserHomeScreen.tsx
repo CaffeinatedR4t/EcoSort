@@ -8,42 +8,63 @@ import {
   TouchableOpacity, 
   Platform, 
   useWindowDimensions,
+  ImageBackground,
   StatusBar,
-  Alert
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
-import { useThemeColors } from '../../hooks/useThemeColors';
 import { spacing } from '../../services/theme/spacing';
 import { Card } from '../../components/Card';
 import { BottomNav } from '../../components/BottomNav';
 import { Logo } from '../../components/Logo';
 import { useAuthStore } from '../../store/authStore';
 import { usePickupStore } from '../../store/pickupStore';
-import { Wallet } from 'lucide-react-native';
+import { ArrowUpRight, History as HistoryIcon } from 'lucide-react-native';
 import { useNotificationStore } from '../../store/notificationStore';
 import { 
   Bell, 
-  History, 
-  Coffee, 
-  Recycle, 
-  CheckCircle2, 
-  Droplets, 
   Rocket, 
-  MapPin, 
   Home,
   ShieldCheck,
   Truck,
-  ChevronRight
+  ChevronRight,
+  Wallet
 } from 'lucide-react-native';
 
+type BannerVariant = 'morning' | 'afternoon' | 'evening' | 'night';
+
+const bannerAssets: Record<BannerVariant, any> = {
+  morning: require('../../../assets/logo/gm (1).png'),
+  afternoon: require('../../../assets/logo/ga (1).png'),
+  evening: require('../../../assets/logo/ge (1).png'),
+  night: require('../../../assets/logo/gn (1).png'),
+};
+
+export const getHomeBannerVariant = (hour = new Date().getHours()): BannerVariant => {
+  if (hour >= 5 && hour < 12) return 'morning';
+  if (hour >= 12 && hour < 17) return 'afternoon';
+  if (hour >= 17 && hour < 21) return 'evening';
+  return 'night';
+};
+
+export const getHomeBannerGreeting = (hour = new Date().getHours(), name = 'there') => {
+  const variant = getHomeBannerVariant(hour);
+  const prefix = {
+    morning: 'Good morning',
+    afternoon: 'Good afternoon',
+    evening: 'Good evening',
+    night: 'Good night',
+  }[variant];
+
+  return `${prefix}, ${name}`;
+};
+
 export const UserHomeScreen = () => {
-  const { user, transactions, fetchTransactions, fetchProfile } = useAuthStore();
+  const { user, fetchTransactions, fetchProfile } = useAuthStore();
   const { requests, fetchUserRequests } = usePickupStore();
   const { unreadCount, fetchNotifications } = useNotificationStore();
   const [refreshing, setRefreshing] = useState(false);
   const navigation = useNavigation<any>();
-  const colors = useThemeColors();
   const { width } = useWindowDimensions();
   const insets = useSafeAreaInsets();
 
@@ -69,35 +90,17 @@ export const UserHomeScreen = () => {
     setRefreshing(false);
   };
 
-  const getGreeting = () => {
-    const hour = new Date().getHours();
-    if (hour >= 5 && hour < 12) return 'Good Morning,';
-    if (hour >= 12 && hour < 17) return 'Good Afternoon,';
-    if (hour >= 17 && hour < 21) return 'Good Evening,';
-    return 'Good Night,';
-  };
-
-  // Dynamic calculations
   const balance = user?.balance || 0;
+  const bannerVariant = getHomeBannerVariant();
+  const greetingText = getHomeBannerGreeting(new Date().getHours(), user?.name?.split(' ')[0] || 'there');
+  const [bannerGreetingTop, bannerGreetingBottom] = greetingText.split(', ');
 
   return (
-    <View style={[styles.container, { backgroundColor: '#f8f9ff' }]}>
-      <StatusBar barStyle="light-content" backgroundColor="#006948" />
-      
-      {/* Decorative Background Element */}
-      <View style={[
-        styles.bgCircle, 
-        { 
-          backgroundColor: '#e0f2f1',
-          top: -width * 0.4,
-          left: -width * 0.2,
-          width: width * 1.5,
-          height: width * 1.5,
-          borderRadius: (width * 1.5) / 2,
-        }
-      ]} />
+      <View style={[styles.container, { backgroundColor: '#006948' }]}>
+        <StatusBar barStyle="light-content" backgroundColor="#006948" />
 
-      <SafeAreaView style={{ flex: 1 }} edges={['top', 'left', 'right']}>
+      <SafeAreaView style={{ flex: 1, backgroundColor: '#006948' }} edges={['top', 'left', 'right']}>
+        <View style={{ flex: 1, backgroundColor: '#ffffff' }}>
         <ScrollView 
           contentContainerStyle={[
             styles.scrollContent,
@@ -109,31 +112,89 @@ export const UserHomeScreen = () => {
           }
         >
           {/* Header */}
-          <View style={styles.header}>
-            <View style={styles.logoGroup}>
-              <View style={styles.logoPositioner}>
-                <Logo size={32} />
+          <View style={styles.headerShell}>
+            <View style={styles.header}>
+              <View style={styles.logoGroup}>
+                  <View style={styles.logoPositioner}>
+                    <Logo size={32} />
+                  </View>
+                  <Text style={[styles.logoText, { color: '#006948' }]}>EcoSort</Text>
               </View>
-              <Text style={[styles.logoText, { color: '#006948' }]}>EcoSort</Text>
+              <TouchableOpacity 
+                style={[styles.iconButton, { backgroundColor: '#fff' }]}
+                onPress={() => navigation.navigate('Notification')}
+              >
+                <Bell color="#006948" size={22} />
+                {unreadCount > 0 && (
+                  <View style={styles.badgeContainer}>
+                    <Text style={styles.badgeTextCount}>{unreadCount > 9 ? '9+' : unreadCount}</Text>
+                  </View>
+                )}
+              </TouchableOpacity>
             </View>
-            <TouchableOpacity 
-              style={[styles.iconButton, { backgroundColor: '#fff' }]}
-              onPress={() => navigation.navigate('Notification')}
-            >
-              <Bell color="#006948" size={22} />
-              {unreadCount > 0 && (
-                <View style={styles.badgeContainer}>
-                  <Text style={styles.badgeTextCount}>{unreadCount > 9 ? '9+' : unreadCount}</Text>
-                </View>
-              )}
-            </TouchableOpacity>
           </View>
 
-          {/* Hero Greeting */}
-          <View style={styles.heroSection}>
-            <Text style={[styles.greetingText, { color: '#121c28' }]}>
-              {getGreeting()}{'\n'}{user?.name || 'Alex'}
-            </Text>
+          {/* Time Banner */}
+          <View style={styles.bannerSection}>
+            <View style={styles.bannerCard}>
+              <ImageBackground
+                testID={`home-banner-${bannerVariant}`}
+                source={bannerAssets[bannerVariant]}
+                style={styles.bannerImage}
+                imageStyle={styles.bannerImageAsset}
+                resizeMode="cover"
+              >
+                  <View style={styles.bannerOverlay}>
+                    <Text style={styles.bannerGreetingTop}>{bannerGreetingTop}</Text>
+                    <Text style={styles.bannerGreetingBottom}>{bannerGreetingBottom}</Text>
+                  </View>
+                </ImageBackground>
+              </View>
+            </View>
+
+          {/* Wallet Card */}
+          <View style={styles.walletSection}>
+            <View style={styles.walletCard}>
+              <View style={styles.walletRow}>
+                <View style={styles.walletCopy}>
+                  <View style={styles.walletIdentity}>
+                    <View style={styles.walletLogoWrap}>
+                      <Wallet color="#006948" size={20} />
+                    </View>
+                    <View>
+                      <Text style={styles.walletLabel}>Eco Coins</Text>
+                      <Text style={styles.balanceText}>Rp {balance.toLocaleString('id-ID')}</Text>
+                    </View>
+                  </View>
+                </View>
+
+                <View style={styles.walletActions}>
+                  <TouchableOpacity
+                    style={styles.walletAction}
+                    onPress={() => navigation.navigate('Withdrawal')}
+                    testID="wallet-pay-button"
+                    activeOpacity={0.82}
+                  >
+                    <View style={styles.walletActionIcon}>
+                      <ArrowUpRight color="#006948" size={18} />
+                    </View>
+                    <Text style={styles.walletActionLabel}>Redeem</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={styles.walletAction}
+                    onPress={() => navigation.navigate('TransactionHistory')}
+                    testID="wallet-history-button"
+                    activeOpacity={0.82}
+                  >
+                    <View style={styles.walletActionIcon}>
+                      <HistoryIcon color="#006948" size={18} />
+                    </View>
+                    <Text style={styles.walletActionLabel}>History</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </View>
           </View>
 
           {/* Active Pickups Section */}
@@ -167,27 +228,6 @@ export const UserHomeScreen = () => {
             </View>
           )}
 
-          {/* Wallet Card - Consistent with Driver UI */}
-          <View style={[styles.walletCard, { backgroundColor: '#006948' }]}>
-            <View style={styles.walletHeader}>
-              <View style={styles.earningsIconBox}>
-                <Wallet color="rgba(255,255,255,0.85)" size={20} />
-              </View>
-              <Text style={styles.walletLabel}>AVAILABLE BALANCE</Text>
-            </View>
-            
-            <Text style={styles.balanceText}>Rp {balance.toLocaleString('id-ID')}</Text>
-            
-            <View style={styles.walletActions}>
-              <TouchableOpacity 
-                style={styles.pillBtn}
-                onPress={() => navigation.navigate('Withdrawal')}
-              >
-                <Text style={[styles.pillBtnText, { color: '#006948' }]}>REDEEM</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-
           {/* Quick Guides Section */}
           <View style={styles.section}>
             <Text style={[styles.sectionTitle, { color: '#121c28' }]}>Quick Guides</Text>
@@ -201,8 +241,8 @@ export const UserHomeScreen = () => {
                 style={styles.guideCard}
                 onPress={() => navigation.navigate('GetStarted')}
               >
-                <View style={[styles.guideIconBox, { backgroundColor: '#f3e5f5' }]}>
-                  <Rocket color="#9c27b0" size={24} />
+                <View style={[styles.guideIconBox, { backgroundColor: '#e8f5e9' }]}>
+                  <Rocket color="#006948" size={24} />
                 </View>
                 <Text style={styles.guideTitle}>Get Started</Text>
                 <Text style={styles.guideSubtitle}>Learn the basics of earning.</Text>
@@ -212,8 +252,8 @@ export const UserHomeScreen = () => {
                 style={styles.guideCard}
                 onPress={() => navigation.navigate('AddYourHome')}
               >
-                <View style={[styles.guideIconBox, { backgroundColor: '#e1f5fe' }]}>
-                  <Home color="#03a9f4" size={24} />
+                <View style={[styles.guideIconBox, { backgroundColor: '#c8e6c9' }]}>
+                  <Home color="#006948" size={24} />
                 </View>
                 <Text style={styles.guideTitle}>Add your home</Text>
                 <Text style={styles.guideSubtitle}>Setup your home address.</Text>
@@ -223,8 +263,8 @@ export const UserHomeScreen = () => {
                 style={styles.guideCard}
                 onPress={() => navigation.navigate('Privacy')}
               >
-                <View style={[styles.guideIconBox, { backgroundColor: '#f1f8e9' }]}>
-                  <ShieldCheck color="#8bc34a" size={24} />
+                <View style={[styles.guideIconBox, { backgroundColor: '#a5d6a7' }]}>
+                  <ShieldCheck color="#006948" size={24} />
                 </View>
                 <Text style={styles.guideTitle}>Privacy</Text>
                 <Text style={styles.guideSubtitle}>Your data is safe.</Text>
@@ -232,6 +272,7 @@ export const UserHomeScreen = () => {
             </ScrollView>
           </View>
         </ScrollView>
+        </View>
       </SafeAreaView>
 
       <BottomNav activeRoute="Home" />
@@ -243,18 +284,39 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
+  headerShell: {
+    backgroundColor: '#ffffff',
+    borderRadius: 28,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    marginTop: spacing.sm + 4,
+    marginBottom: 0,
+    overflow: 'hidden',
+    zIndex: 3,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.08,
+        shadowRadius: 14,
+      },
+      android: {
+        elevation: 3,
+      },
+    }),
+  },
   bgCircle: {
     position: 'absolute',
     opacity: 0.5,
   },
   scrollContent: {
-    padding: spacing.lg,
+    paddingHorizontal: spacing.lg,
+    paddingTop: 0,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: spacing.xl,
   },
   logoGroup: {
     flexDirection: 'row',
@@ -278,7 +340,7 @@ const styles = StyleSheet.create({
   iconButton: {
     width: 44,
     height: 44,
-    borderRadius: 22,
+    borderRadius: 14,
     justifyContent: 'center',
     alignItems: 'center',
     position: 'relative',
@@ -298,7 +360,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 8,
     right: 8,
-    backgroundColor: '#ff4444',
+    backgroundColor: '#ba1a1a',
     minWidth: 16,
     height: 16,
     borderRadius: 8,
@@ -313,73 +375,155 @@ const styles = StyleSheet.create({
     fontSize: 9,
     fontWeight: '800',
   },
-  heroSection: {
-    marginBottom: spacing.xl,
+  bannerSection: {
+    marginBottom: spacing.sm,
+    marginHorizontal: -spacing.lg,
+    marginTop: -100,
+    zIndex: 0,
   },
-  greetingText: {
-    fontSize: 32,
-    fontWeight: '700',
-    lineHeight: 40,
-  },
-  walletCard: {
-    padding: spacing.xl,
-    borderRadius: 24,
-    marginBottom: spacing.xl,
+  bannerCard: {
+    borderRadius: 0,
+    overflow: 'hidden',
+    backgroundColor: '#d7edd8',
+    height: 350,
     ...Platform.select({
       ios: {
-        shadowColor: '#006948',
+        shadowColor: '#000',
         shadowOffset: { width: 0, height: 10 },
-        shadowOpacity: 0.3,
-        shadowRadius: 15,
+        shadowOpacity: 0.1,
+        shadowRadius: 18,
       },
       android: {
-        elevation: 8,
+        elevation: 4,
       },
     }),
   },
-  walletHeader: {
+  bannerImage: {
+    width: '100%',
+    height: '100%',
+    justifyContent: 'flex-start',
+  },
+  bannerImageAsset: {
+    width: '100%',
+    height: '100%',
+  },
+  bannerOverlay: {
+    flex: 1,
+    paddingHorizontal: spacing.lg,
+    paddingTop: 140,
+    paddingBottom: spacing.md,
+    justifyContent: 'flex-start',
+  },
+  bannerGreetingTop: {
+    color: '#ffffff',
+    fontSize: 27,
+    fontWeight: '900',
+    lineHeight: 30,
+    maxWidth: '70%',
+    textShadowColor: 'rgba(0, 0, 0, 0.22)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
+  },
+  bannerGreetingBottom: {
+    color: '#ffffff',
+    fontSize: 30,
+    fontWeight: '900',
+    lineHeight: 34,
+    marginTop: -2,
+    maxWidth: '70%',
+    textShadowColor: 'rgba(0, 0, 0, 0.22)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
+  },
+  walletSection: {
+    marginBottom: spacing.lg,
+    marginTop: -45,
+    paddingHorizontal: 0,
+    zIndex: 2,
+  },
+  walletCard: {
+    backgroundColor: '#ffffff',
+    borderRadius: 24,
+    paddingVertical: 8,
+    paddingHorizontal: spacing.md,
+    borderWidth: 1,
+    borderColor: '#e8edf2',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.08,
+        shadowRadius: 16,
+      },
+      android: {
+        elevation: 4,
+      },
+    }),
+  },
+  walletRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: spacing.sm,
+  },
+  walletCopy: {
+    flex: 1,
+    minWidth: 0,
+  },
+  walletIdentity: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    marginBottom: spacing.md,
   },
-  earningsIconBox: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    backgroundColor: 'rgba(255,255,255,0.15)',
+  walletLogoWrap: {
+    width: 38,
+    height: 38,
+    borderRadius: 14,
+    backgroundColor: '#e0f2f1',
     justifyContent: 'center',
     alignItems: 'center',
   },
   walletLabel: {
-    color: 'rgba(255, 255, 255, 0.8)',
-    fontSize: 14,
-    fontWeight: '700',
-    letterSpacing: 1,
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#64748b',
+    textTransform: 'uppercase',
+    letterSpacing: 1.1,
+    marginBottom: 2,
   },
   balanceText: {
-    color: '#fff',
-    fontSize: 38,
+    color: '#121c28',
+    fontSize: 23,
     fontWeight: '800',
-    marginBottom: spacing.xs,
+    lineHeight: 26,
   },
   walletActions: {
     flexDirection: 'row',
-    gap: spacing.md,
-    marginTop: spacing.lg,
+    justifyContent: 'flex-end',
+    gap: 6,
+    marginTop: 0,
+    alignItems: 'flex-start',
   },
-  pillBtn: {
-    flex: 1,
-    height: 48,
-    borderRadius: 24,
+  walletAction: {
+    alignItems: 'center',
+    justifyContent: 'flex-start',
+    gap: 2,
+    paddingVertical: 0,
+    minWidth: 54,
+  },
+  walletActionIcon: {
+    width: 34,
+    height: 34,
+    borderRadius: 14,
+    backgroundColor: '#e0f2f1',
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#fff',
   },
-  pillBtnText: {
-    fontSize: 14,
-    fontWeight: '800',
-    letterSpacing: 0.5,
+  walletActionLabel: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#121c28',
+    marginTop: 0,
   },
   section: {
     marginBottom: spacing.lg,
@@ -407,7 +551,7 @@ const styles = StyleSheet.create({
   activePickupIcon: {
     width: 48,
     height: 48,
-    borderRadius: 24,
+    borderRadius: 14,
     backgroundColor: '#f1f8e9',
     justifyContent: 'center',
     alignItems: 'center',
@@ -464,7 +608,7 @@ const styles = StyleSheet.create({
   guideIconBox: {
     width: 56,
     height: 56,
-    borderRadius: 28,
+    borderRadius: 14,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: spacing.md,
