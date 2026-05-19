@@ -103,6 +103,7 @@ export const AccountSettingsScreen = () => {
   const [tempVehiclePlate, setTempVehiclePlate] = useState(user?.vehicle_plate || '');
   const [savedName, setSavedName]       = useState(user?.name || '');
   const [saveSuccess, setSaveSuccess]   = useState(false);
+  const [saveMessage, setSaveMessage]   = useState('Changes saved successfully!');
   const [savingProfile, setSavingProfile] = useState(false);
   const [deleteModalVisible, setDeleteModalVisible] = useState(false);
   const [deletingAccount, setDeletingAccount] = useState(false);
@@ -151,6 +152,7 @@ export const AccountSettingsScreen = () => {
 
     setSavedName(nextName);
     setEditingName(false);
+    setSaveMessage(result.offline ? 'Saved offline. Will sync when online.' : 'Changes saved successfully!');
     setSaveSuccess(true);
     setTimeout(() => setSaveSuccess(false), 2500);
   };
@@ -165,6 +167,7 @@ export const AccountSettingsScreen = () => {
     }
 
     setEditingPhone(false);
+    setSaveMessage(result.offline ? 'Saved offline. Will sync when online.' : 'Changes saved successfully!');
     setSaveSuccess(true);
     setTimeout(() => setSaveSuccess(false), 2500);
   };
@@ -240,7 +243,7 @@ export const AccountSettingsScreen = () => {
         {saveSuccess && (
           <View style={styles.toast}>
             <Check color={WHITE} size={14} />
-            <Text style={styles.toastText}>Changes saved successfully!</Text>
+            <Text style={styles.toastText}>{saveMessage}</Text>
           </View>
         )}
 

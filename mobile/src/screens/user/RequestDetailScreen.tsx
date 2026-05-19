@@ -13,9 +13,7 @@ import {
   User, 
   CheckCircle, 
   AlertCircle,
-  Truck,
-  Phone,
-  MessageCircle
+  Truck
 } from 'lucide-react-native';
 import { colors } from '../../services/theme/colors';
 import { spacing } from '../../services/theme/spacing';
@@ -31,6 +29,10 @@ export const RequestDetailScreen = () => {
   const [driverPos, setDriverPos] = useState<any>(null);
   const [routeCoords, setRouteCoords] = useState<any[]>([]);
   const [collectorProfile, setCollectorProfile] = useState<any>(null);
+  const collectorVehicle = [
+    collectorProfile?.vehicle_type,
+    collectorProfile?.vehicle_plate,
+  ].filter(Boolean).join(' • ');
 
   // Fetch collector profile
   useEffect(() => {
@@ -38,7 +40,7 @@ export const RequestDetailScreen = () => {
       const fetchCollector = async () => {
         const { data } = await supabase
           .from('users')
-          .select('name, current_lat, current_lng')
+          .select('name, phone_number, vehicle_type, vehicle_plate, operating_area, current_lat, current_lng')
           .eq('id', request.collector_id)
           .single();
         if (data) {
@@ -184,17 +186,11 @@ export const RequestDetailScreen = () => {
               </View>
               <View style={styles.driverText}>
                 <Text style={styles.driverName}>
-                  {collectorProfile?.name || 'EcoSort Partner'}
+                  {collectorProfile?.name || 'Assigned collector'}
                 </Text>
-                <Text style={styles.driverRating}>⭐ 4.9 • Official Collector</Text>
-              </View>
-              <View style={styles.driverActions}>
-                <TouchableOpacity style={styles.circleAction}>
-                  <Phone color={colors.primary} size={20} />
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.circleAction}>
-                  <MessageCircle color={colors.primary} size={20} />
-                </TouchableOpacity>
+                <Text style={styles.driverMeta}>
+                  {collectorVehicle || collectorProfile?.phone_number || 'Collector assigned'}
+                </Text>
               </View>
             </View>
           </Card>
@@ -358,22 +354,11 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: colors.textBlack,
   },
-  driverRating: {
+  driverMeta: {
     fontSize: 12,
     color: colors.textBlackSoft,
     marginTop: 2,
-  },
-  driverActions: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-  },
-  circleAction: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#f1f8e9',
-    justifyContent: 'center',
-    alignItems: 'center',
+    fontWeight: '600',
   },
   section: {
     paddingHorizontal: spacing.lg,

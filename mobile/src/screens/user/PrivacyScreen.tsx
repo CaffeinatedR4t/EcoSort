@@ -18,14 +18,12 @@ import {
   Smartphone,
   CheckCircle2
 } from 'lucide-react-native';
-import { useThemeColors } from '../../hooks/useThemeColors';
 import { spacing } from '../../services/theme/spacing';
 import { Card } from '../../components/Card';
 import { Button } from '../../components/Button';
 
 export const PrivacyScreen = () => {
   const navigation = useNavigation<any>();
-  const colors = useThemeColors();
 
   const sections = [
     {
@@ -62,11 +60,11 @@ export const PrivacyScreen = () => {
       
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
-          <ChevronLeft color={colors.textBlack} size={28} />
+        <TouchableOpacity style={styles.iconBtn} onPress={() => navigation.goBack()}>
+          <ChevronLeft color="#121c28" size={28} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Data & Privacy</Text>
-        <View style={{ width: 44 }} />
+        <Text style={styles.logoText}>EcoSort</Text>
+        <View style={styles.iconBtn} />
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
@@ -119,25 +117,22 @@ const styles = StyleSheet.create({
   },
   header: {
     flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'space-between',
-    padding: spacing.lg,
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#f1f5f9',
+    alignItems: 'center',
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
   },
-  backBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#f8fafc',
+  logoText: {
+    fontSize: 18,
+    fontWeight: '800',
+    letterSpacing: -0.5,
+    color: '#006948',
+  },
+  iconBtn: {
+    width: 36,
+    height: 36,
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#1e293b',
   },
   scrollContent: {
     padding: spacing.lg,

@@ -28,6 +28,10 @@ import { usePickupStore } from '../../store/pickupStore';
 import { useNotificationStore } from '../../store/notificationStore';
 import { supabase } from '../../services/api/supabase';
 import {
+  cacheCollectorPickupHistory,
+  getCachedCollectorPickupHistory,
+} from '../../services/offline/pickupHistoryCache';
+import {
   LogOut,
   Package,
   Navigation,
@@ -628,13 +632,23 @@ export const CollectorHomeScreen = () => {
 
   const fetchHistory = async () => {
     if (!user) return;
-    const { data, error } = await supabase
-      .from('pickup_requests')
-      .select('*, waste_classifications(waste_type, collector_weight_kg)')
-      .eq('collector_id', user.id)
-      .eq('status', 'COMPLETED')
-      .order('created_at', { ascending: false });
-    if (!error) setHistory((data as HistoryItem[]) || []);
+    try {
+      const { data, error } = await supabase
+        .from('pickup_requests')
+        .select('*, waste_classifications(waste_type, collector_weight_kg)')
+        .eq('collector_id', user.id)
+        .eq('status', 'COMPLETED')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      const nextHistory = (data as HistoryItem[]) || [];
+      setHistory(nextHistory);
+      await cacheCollectorPickupHistory(user.id, nextHistory);
+    } catch {
+      const cachedHistory = await getCachedCollectorPickupHistory(user.id);
+      setHistory(cachedHistory as HistoryItem[]);
+    }
   };
 
   const fetchDriverStats = async () => {

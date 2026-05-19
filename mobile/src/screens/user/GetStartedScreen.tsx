@@ -36,7 +36,7 @@ export const GetStartedScreen = () => {
     <View style={[styles.container, { backgroundColor: colors.primary }]}>
       <StatusBar barStyle="light-content" backgroundColor={colors.primary} />
       <SafeAreaView style={{ flex: 1, backgroundColor: colors.primary }} edges={['top', 'left', 'right']}>
-        <View style={{ flex: 1, backgroundColor: colors.background }}>
+        <View style={{ flex: 1, backgroundColor: colors.white }}>
       
       {/* Header */}
       <View style={styles.header}>
@@ -59,7 +59,7 @@ export const GetStartedScreen = () => {
           </View>
           <Text style={[styles.title, { color: colors.textBlack }]}>Get Started</Text>
           <Text style={[styles.subtitle, { color: colors.textBlackSoft }]}>
-            Your simple guide to mastering recycling and earning rewards.
+            Scan items, build your bag, request pickup, and earn after verification.
           </Text>
         </View>
 
@@ -72,7 +72,7 @@ export const GetStartedScreen = () => {
             </View>
             <Text style={[styles.stepTitle, { color: colors.textBlack }]}>1. Scan Items</Text>
             <Text style={[styles.stepText, { color: colors.textBlackSoft }]}>
-              Point your camera at any trash. Our AI instantly identifies the material and tells you which bin it belongs in.
+              Take photos one item at a time. EcoSort classifies the waste type and adds each confirmed item to your bag.
             </Text>
           </Card>
 
@@ -82,9 +82,9 @@ export const GetStartedScreen = () => {
               <View style={[styles.stepIconCircle, { backgroundColor: '#40C2FD' }]}>
                 <Recycle color={colors.white} size={18} />
               </View>
-              <Text style={[styles.stepTitle, { color: colors.textBlack }]}>2. Sort Right</Text>
+              <Text style={[styles.stepTitle, { color: colors.textBlack }]}>2. Build a Bag</Text>
               <Text style={[styles.stepText, { color: colors.textBlackSoft }]}>
-                Follow the color-coded bin guides.
+                Keep adding scanned items. When your bag is ready, request a pickup from your saved or selected address.
               </Text>
             </Card>
 
@@ -94,7 +94,7 @@ export const GetStartedScreen = () => {
               </View>
               <Text style={[styles.stepTitle, { color: colors.textBlack }]}>3. Get Rewarded</Text>
               <Text style={[styles.stepText, { color: colors.textBlackSoft }]}>
-                Collect EcoCoins for every good deed.
+                A collector verifies the bag, then admin approval moves your reward into your Eco Coins balance.
               </Text>
             </Card>
           </View>
@@ -117,10 +117,10 @@ export const GetStartedScreen = () => {
           <Card style={[styles.issueCard, { backgroundColor: colors.white, borderColor: '#E5E7EB' }]}>
             <View style={styles.issueHeader}>
               <MapPin color={colors.primary} size={20} />
-              <Text style={[styles.issueTitleText, { color: colors.textBlack }]}>Can't find a bin?</Text>
+              <Text style={[styles.issueTitleText, { color: colors.textBlack }]}>Can't request pickup?</Text>
             </View>
             <Text style={[styles.issueText, { color: colors.textBlackSoft }]}>
-              Use the 'Map' feature in the Bins tab to locate verified public recycling and compost bins near you.
+              Finish scanning items into a bag and make sure your pickup address is fully loaded before submitting.
             </Text>
           </Card>
         </View>

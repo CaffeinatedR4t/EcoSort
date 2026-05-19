@@ -125,6 +125,7 @@ export const AdminAccountSettingsScreen = () => {
   const [tempPhone, setTempPhone]     = useState(user?.phone_number || '');
   const [savedName, setSavedName]     = useState(user?.name || '');
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [saveMessage, setSaveMessage] = useState('Changes saved!');
   const [savingProfile, setSavingProfile] = useState(false);
   const [deleteModalVisible, setDeleteModalVisible] = useState(false);
   const [deletingAccount, setDeletingAccount] = useState(false);
@@ -171,6 +172,7 @@ export const AdminAccountSettingsScreen = () => {
 
     setSavedName(nextName);
     setEditingName(false);
+    setSaveMessage(result.offline ? 'Saved offline. Will sync when online.' : 'Changes saved!');
     setSaveSuccess(true);
     setTimeout(() => setSaveSuccess(false), 2500);
   };
@@ -185,6 +187,7 @@ export const AdminAccountSettingsScreen = () => {
     }
 
     setEditingPhone(false);
+    setSaveMessage(result.offline ? 'Saved offline. Will sync when online.' : 'Changes saved!');
     setSaveSuccess(true);
     setTimeout(() => setSaveSuccess(false), 2500);
   };
@@ -245,7 +248,7 @@ export const AdminAccountSettingsScreen = () => {
         {saveSuccess && (
           <View style={styles.toast}>
             <Check color="#ffffff" size={16} />
-            <Text style={styles.toastText}>Changes saved!</Text>
+            <Text style={styles.toastText}>{saveMessage}</Text>
           </View>
         )}
 

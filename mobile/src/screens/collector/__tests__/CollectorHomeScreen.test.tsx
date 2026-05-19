@@ -10,6 +10,14 @@ jest.mock('../../../store/authStore');
 jest.mock('../../../store/pickupStore');
 jest.mock('../../../store/notificationStore');
 
+jest.mock('expo-sqlite', () => ({
+  openDatabaseAsync: jest.fn().mockResolvedValue({
+    execAsync: jest.fn(),
+    runAsync: jest.fn(),
+    getAllAsync: jest.fn().mockResolvedValue([]),
+  }),
+}));
+
 const mockNavigate = jest.fn();
 
 jest.mock('@react-navigation/native', () => ({

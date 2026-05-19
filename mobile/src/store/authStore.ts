@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { supabase } from '../services/api/supabase';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 interface UserProfile {
   id: string;
@@ -18,6 +19,35 @@ interface UserProfile {
   vehicle_plate?: string | null;
   operating_area?: string | null;
 }
+
+type OfflineProfileUpdate = {
+  name?: string;
+  phone_number?: string | null;
+  updated_at: string;
+};
+
+const offlineProfileKey = (userId: string) => `offline_profile_update:${userId}`;
+
+const pickOfflineProfileFields = (profileData: {
+  name?: string;
+  phone_number?: string | null;
+}): Omit<OfflineProfileUpdate, 'updated_at'> => {
+  const draft: Omit<OfflineProfileUpdate, 'updated_at'> = {};
+  if (profileData.name !== undefined) draft.name = profileData.name;
+  if (profileData.phone_number !== undefined) draft.phone_number = profileData.phone_number;
+  return draft;
+};
+
+const isNetworkProfileError = (error: any) => {
+  const message = String(error?.message || error || '').toLowerCase();
+  return (
+    message.includes('network') ||
+    message.includes('failed to fetch') ||
+    message.includes('fetch failed') ||
+    message.includes('timeout') ||
+    message.includes('offline')
+  );
+};
 
 const normalizeProfile = (profile: any, authEmail?: string | null): UserProfile => {
   const role = String(profile?.role || 'user').trim().toLowerCase();
@@ -47,7 +77,8 @@ interface AuthState {
     vehicle_type?: string | null;
     vehicle_plate?: string | null;
     operating_area?: string | null;
-  }) => Promise<{ success: boolean; error?: string }>;
+  }) => Promise<{ success: boolean; error?: string; offline?: boolean }>;
+  syncPendingProfileUpdate: (userId?: string) => Promise<{ success: boolean; error?: string }>;
   fetchTransactions: () => Promise<void>;
   fetchWithdrawals: () => Promise<void>;
   requestWithdrawal: (data: {
@@ -85,6 +116,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       
       if (profile) {
         set({ user: normalizeProfile(profile, session.user.email) });
+        await get().syncPendingProfileUpdate(session.user.id);
       }
     }
 
@@ -113,6 +145,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
           if (profile) {
             set({ user: normalizeProfile(profile, session.user.email) });
+            await get().syncPendingProfileUpdate(session.user.id);
           } else {
             console.warn('No profile found for user ID:', session.user.id);
           }
@@ -137,7 +170,42 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     if (profile && !error) {
       const authEmail = get().session?.user?.email;
       set({ user: normalizeProfile(profile, authEmail) });
+      await get().syncPendingProfileUpdate(userId);
     }
+  },
+  syncPendingProfileUpdate: async (inputUserId) => {
+    const userId = inputUserId || get().user?.id || get().session?.user?.id;
+    if (!userId) return { success: false, error: 'Not authenticated' };
+
+    const rawDraft = await AsyncStorage.getItem(offlineProfileKey(userId));
+    if (!rawDraft) return { success: true };
+
+    let draft: OfflineProfileUpdate;
+    try {
+      draft = JSON.parse(rawDraft);
+    } catch {
+      await AsyncStorage.removeItem(offlineProfileKey(userId));
+      return { success: true };
+    }
+
+    const updates = pickOfflineProfileFields(draft);
+    if (Object.keys(updates).length === 0) {
+      await AsyncStorage.removeItem(offlineProfileKey(userId));
+      return { success: true };
+    }
+
+    const { error } = await (supabase.from('users') as any)
+      .update(updates)
+      .eq('id', userId);
+
+    if (error) return { success: false, error: error.message };
+
+    await AsyncStorage.removeItem(offlineProfileKey(userId));
+    const user = get().user;
+    if (user?.id === userId) {
+      set({ user: normalizeProfile({ ...user, ...updates }, get().session?.user?.email) });
+    }
+    return { success: true };
   },
   updateProfile: async (profileData) => {
     const userId = get().user?.id || get().session?.user?.id;
@@ -152,12 +220,27 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       return { success: true };
     }
 
+    await get().syncPendingProfileUpdate(userId);
+
     const { error } = await (supabase.from('users') as any)
       .update(updates)
       .eq('id', userId);
 
-    if (error) return { success: false, error: error.message };
+    if (error) {
+      const offlineUpdates = pickOfflineProfileFields(updates);
+      if (isNetworkProfileError(error) && Object.keys(offlineUpdates).length > 0) {
+        const draft: OfflineProfileUpdate = {
+          ...offlineUpdates,
+          updated_at: new Date().toISOString(),
+        };
+        await AsyncStorage.setItem(offlineProfileKey(userId), JSON.stringify(draft));
+        set({ user: normalizeProfile({ ...user, ...offlineUpdates }, get().session?.user?.email) });
+        return { success: true, offline: true };
+      }
+      return { success: false, error: error.message };
+    }
 
+    await AsyncStorage.removeItem(offlineProfileKey(userId));
     set({ user: normalizeProfile({ ...user, ...updates }) });
     return { success: true };
   },

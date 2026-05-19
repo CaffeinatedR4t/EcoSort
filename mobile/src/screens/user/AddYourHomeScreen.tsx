@@ -30,7 +30,7 @@ export const AddYourHomeScreen = () => {
     <View style={[styles.container, { backgroundColor: colors.primary }]}>
       <StatusBar barStyle="light-content" backgroundColor={colors.primary} />
       <SafeAreaView style={{ flex: 1, backgroundColor: colors.primary }} edges={['top', 'left', 'right']}>
-        <View style={{ flex: 1, backgroundColor: colors.background }}>
+        <View style={{ flex: 1, backgroundColor: colors.white }}>
       
       {/* Header */}
       <View style={styles.header}>
